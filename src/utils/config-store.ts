@@ -7,6 +7,7 @@ import Conf from 'conf';
 
 import type { MagicReleaseConfig } from '../types/index.js';
 import { ConfigError, createInvalidAPIKeyError, createMissingAPIKeyError } from './errors.js';
+import { getProjectConfig } from './project-config.js';
 
 // Configuration interface
 interface StoredConfig {
@@ -300,34 +301,102 @@ export const validateConfig = (): { isValid: boolean; errors: string[] } => {
 
 /**
  * Get complete configuration object for MagicRelease
+ * Merges global user config (API keys) with project-level config (.magicrrc)
  */
 export const getConfig = (): MagicReleaseConfig => {
   const provider = getCurrentProvider() as 'openai' | 'anthropic' | 'azure' || 'openai';
   
-  return {
+  // Get project-level configuration from .magicrrc file
+  const projectConfig = getProjectConfig();
+  
+  // Get API key safely (might be undefined)
+  let apiKey: string | undefined;
+  try {
+    apiKey = getCurrentAPIKey();
+  } catch {
+    // API key not configured yet - this is okay for initial setup
+    apiKey = undefined;
+  }
+
+  // Build the merged configuration step by step
+  const config: MagicReleaseConfig = {
     llm: {
-      provider,
-      apiKey: getCurrentAPIKey(),
-      model: getModel(),
-      temperature: getTemperature(),
-      maxTokens: getMaxTokens()
+      provider: projectConfig.llm?.provider || provider,
     },
-    changelog: {
-      filename: 'CHANGELOG.md',
-      includeCommitLinks: true,
-      includePRLinks: true,
-      includeIssueLinks: true
-    },
-    git: {
-      tagPattern: 'v*',
-      remote: 'origin'
-    },
-    rules: {
-      minCommitsForUpdate: 1,
-      includePreReleases: false,
-      groupUnreleasedCommits: true
-    }
+    changelog: {},
+    git: {},
+    rules: {},
   };
+
+  // Add LLM properties only if they exist
+  if (apiKey) {
+    config.llm.apiKey = apiKey;
+  }
+  if (projectConfig.llm?.model || getModel()) {
+    config.llm.model = projectConfig.llm?.model || getModel();
+  }
+  if (projectConfig.llm?.temperature !== undefined || getTemperature() !== undefined) {
+    config.llm.temperature = projectConfig.llm?.temperature ?? getTemperature();
+  }
+  if (projectConfig.llm?.maxTokens !== undefined || getMaxTokens() !== undefined) {
+    config.llm.maxTokens = projectConfig.llm?.maxTokens ?? getMaxTokens();
+  }
+
+  // Add changelog properties
+  if (projectConfig.changelog?.filename || 'CHANGELOG.md') {
+    config.changelog.filename = projectConfig.changelog?.filename || 'CHANGELOG.md';
+  }
+  if (projectConfig.changelog?.includeCommitLinks !== undefined || true) {
+    config.changelog.includeCommitLinks = projectConfig.changelog?.includeCommitLinks ?? true;
+  }
+  if (projectConfig.changelog?.includePRLinks !== undefined || true) {
+    config.changelog.includePRLinks = projectConfig.changelog?.includePRLinks ?? true;
+  }
+  if (projectConfig.changelog?.includeIssueLinks !== undefined || true) {
+    config.changelog.includeIssueLinks = projectConfig.changelog?.includeIssueLinks ?? true;
+  }
+  if (projectConfig.changelog?.linkFormat) {
+    config.changelog.linkFormat = {};
+    if (projectConfig.changelog.linkFormat.compare) {
+      config.changelog.linkFormat.compare = projectConfig.changelog.linkFormat.compare;
+    }
+    if (projectConfig.changelog.linkFormat.commit) {
+      config.changelog.linkFormat.commit = projectConfig.changelog.linkFormat.commit;
+    }
+    if (projectConfig.changelog.linkFormat.issue) {
+      config.changelog.linkFormat.issue = projectConfig.changelog.linkFormat.issue;
+    }
+    if (projectConfig.changelog.linkFormat.pr) {
+      config.changelog.linkFormat.pr = projectConfig.changelog.linkFormat.pr;
+    }
+  }
+
+  // Add git properties
+  if (projectConfig.git?.tagPattern || 'v*') {
+    config.git.tagPattern = projectConfig.git?.tagPattern || 'v*';
+  }
+  if (projectConfig.git?.remote || 'origin') {
+    config.git.remote = projectConfig.git?.remote || 'origin';
+  }
+  if (projectConfig.git?.repository) {
+    config.git.repository = projectConfig.git.repository;
+  }
+
+  // Add rules properties
+  if (projectConfig.rules?.minCommitsForUpdate !== undefined || 1) {
+    if (!config.rules) config.rules = {};
+    config.rules.minCommitsForUpdate = projectConfig.rules?.minCommitsForUpdate ?? 1;
+  }
+  if (projectConfig.rules?.includePreReleases !== undefined || false) {
+    if (!config.rules) config.rules = {};
+    config.rules.includePreReleases = projectConfig.rules?.includePreReleases ?? false;
+  }
+  if (projectConfig.rules?.groupUnreleasedCommits !== undefined || true) {
+    if (!config.rules) config.rules = {};
+    config.rules.groupUnreleasedCommits = projectConfig.rules?.groupUnreleasedCommits ?? true;
+  }
+  
+  return config;
 };
 
 /**

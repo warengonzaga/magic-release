@@ -1,0 +1,30 @@
+{
+  "llm": {
+    "provider": "openai",
+    "model": "gpt-4o",
+    "temperature": 0.2,
+    "maxTokens": 200
+  },
+  "changelog": {
+    "filename": "CHANGELOG.md",
+    "includeCommitLinks": true,
+    "includePRLinks": true,
+    "includeIssueLinks": true,
+    "linkFormat": {
+      "compare": "https://github.com/owner/repo/compare/{previousTag}...{currentTag}",
+      "commit": "https://github.com/owner/repo/commit/{hash}",
+      "issue": "https://github.com/owner/repo/issues/{issue}",
+      "pr": "https://github.com/owner/repo/pull/{pr}"
+    }
+  },
+  "git": {
+    "tagPattern": "^v?\\\\d+\\\\.\\\\d+\\\\.\\\\d+",
+    "remote": "origin",
+    "repository": "owner/repo"
+  },
+  "rules": {
+    "minCommitsForUpdate": 1,
+    "includePreReleases": false,
+    "groupUnreleasedCommits": true
+  }
+}

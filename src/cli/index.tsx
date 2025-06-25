@@ -10,6 +10,7 @@ import chalk from 'chalk';
 
 import type { CLIFlags } from '../types/index.js';
 import App from './App.js';
+import { logger } from '../utils/logger.js';
 
 const cli = meow(`
 	${chalk.cyan('🪄 MagicRelease')} - AI-powered changelog generator
@@ -24,6 +25,7 @@ const cli = meow(`
 		--delete-api-key, -d Delete stored API key
 		--config, -c         Configure settings interactively
 		--init, -i           Initialize project configuration
+		--generate-config    Generate sample .magicrrc configuration file
 		--verbose, -v        Enable verbose logging
 		--dry-run            Preview changes without writing files
 		--from               Start from specific tag/commit
@@ -38,6 +40,7 @@ const cli = meow(`
 		$ magicr --test-api-key sk-your-openai-key        # Test key
 		$ magicr --config
 		$ magicr --init
+		$ magicr --generate-config                        # Create .magicrrc template
 		$ magicr --from v1.0.0 --to v2.0.0
 		$ magicr --dry-run
 `, {
@@ -65,6 +68,9 @@ const cli = meow(`
 			type: 'boolean',
 			shortFlag: 'i',
 		},
+		generateConfig: {
+			type: 'boolean',
+		},
 		verbose: {
 			type: 'boolean',
 			shortFlag: 'v',
@@ -80,6 +86,9 @@ const cli = meow(`
 		},
 	},
 });
+
+// Enable UI mode to suppress logger output during React Ink rendering
+logger.enableUIMode();
 
 // Render the React app with CLI flags
 render(<App flags={cli.flags as CLIFlags} />);

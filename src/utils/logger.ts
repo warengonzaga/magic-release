@@ -5,6 +5,103 @@
 
 import { LogEngine, LogMode } from '@wgtechlabs/log-engine';
 
+/**
+ * Singleton class to manage UI mode state with controlled access
+ * Prevents race conditions and unintended state modifications
+ */
+class UIStateManager {
+  private static instance: UIStateManager;
+  private _isUIMode: boolean = false;
+  private _lockCount: number = 0;
+
+  private constructor() {}
+
+  /**
+   * Get the singleton instance
+   */
+  public static getInstance(): UIStateManager {
+    if (!UIStateManager.instance) {
+      UIStateManager.instance = new UIStateManager();
+    }
+    return UIStateManager.instance;
+  }
+
+  /**
+   * Get the current UI mode state
+   */
+  public get isUIMode(): boolean {
+    return this._isUIMode;
+  }
+
+  /**
+   * Enable UI mode with optional lock to prevent accidental toggling
+   */
+  public enableUIMode(withLock: boolean = false): void {
+    const wasUIMode = this._isUIMode;
+    this._isUIMode = true;
+    
+    if (withLock) {
+      this._lockCount++;
+    }
+    
+    // Log state change only if it actually changed and in development
+    if (!wasUIMode && process.env['NODE_ENV'] === 'development') {
+      LogEngine.debug('[UIStateManager] UI mode enabled - suppressing debug/info logs, errors/warnings still visible');
+    }
+  }
+
+  /**
+   * Disable UI mode, respecting locks
+   */
+  public disableUIMode(force: boolean = false): boolean {
+    if (this._lockCount > 0 && !force) {
+      return false; // Cannot disable while locked
+    }
+    
+    const wasUIMode = this._isUIMode;
+    this._isUIMode = false;
+    this._lockCount = 0; // Reset lock count when disabling
+    
+    // Log state change only if it actually changed and in development
+    if (wasUIMode && process.env['NODE_ENV'] === 'development') {
+      LogEngine.debug('[UIStateManager] UI mode disabled - all log levels now visible');
+    }
+    
+    return true;
+  }
+
+  /**
+   * Release a UI mode lock
+   */
+  public releaseLock(): void {
+    if (this._lockCount > 0) {
+      this._lockCount--;
+    }
+  }
+
+  /**
+   * Get current lock count (for debugging purposes)
+   */
+  public getLockCount(): number {
+    return this._lockCount;
+  }
+
+  /**
+   * Force reset the UI state (emergency use only)
+   */
+  public forceReset(): void {
+    this._isUIMode = false;
+    this._lockCount = 0;
+    
+    if (process.env['NODE_ENV'] === 'development') {
+      LogEngine.warn('[UIStateManager] Force reset executed - UI state cleared');
+    }
+  }
+}
+
+// Get the singleton instance
+const uiStateManager = UIStateManager.getInstance();
+
 // LogEngine auto-configures based on NODE_ENV, but we can override for specific needs
 const env = process.env['NODE_ENV'] || 'development';
 
@@ -48,61 +145,77 @@ LogEngine.addSensitiveFields([
   'githubToken'
 ]);
 
-// Logger interface that wraps LogEngine with additional functionality
+// Logger interface that wraps LogEngine with additional functionality and UI mode support
 class Logger {
+  /**
+   * Centralized helper to determine if a log level should be suppressed during UI mode
+   * Critical errors always pass through to ensure system stability
+   */
+  private shouldSuppressLog(level: 'debug' | 'info' | 'warn' | 'error' | 'log'): boolean {
+    if (!uiStateManager.isUIMode) return false;
+    
+    // Always allow critical errors and warnings through, even in UI mode
+    if (level === 'error' || level === 'warn') return false;
+    
+    // Suppress debug, info, and log during UI operations
+    return true;
+  }
+
+  /**
+   * Centralized logging wrapper that handles UI mode checks and LogEngine calls
+   */
+  private logWithUICheck(
+    level: 'debug' | 'info' | 'warn' | 'error' | 'log',
+    message: string,
+    data?: any,
+    options?: { withoutRedaction?: boolean }
+  ): void {
+    if (this.shouldSuppressLog(level)) return;
+
+    const logMethod = options?.withoutRedaction 
+      ? LogEngine.withoutRedaction()[level]
+      : LogEngine[level];
+
+    if (data) {
+      logMethod(message, data);
+    } else {
+      logMethod(message);
+    }
+  }
+
   /**
    * Debug level logging - most verbose
    */
   debug(message: string, data?: any): void {
-    if (data) {
-      LogEngine.debug(message, data);
-    } else {
-      LogEngine.debug(message);
-    }
+    this.logWithUICheck('debug', message, data);
   }
 
   /**
    * Info level logging - general information
    */
   info(message: string, data?: any): void {
-    if (data) {
-      LogEngine.info(message, data);
-    } else {
-      LogEngine.info(message);
-    }
+    this.logWithUICheck('info', message, data);
   }
 
   /**
-   * Warning level logging
+   * Warning level logging - always shows even in UI mode
    */
   warn(message: string, data?: any): void {
-    if (data) {
-      LogEngine.warn(message, data);
-    } else {
-      LogEngine.warn(message);
-    }
+    this.logWithUICheck('warn', message, data);
   }
 
   /**
-   * Error level logging
+   * Error level logging - always shows even in UI mode (critical for debugging)
    */
   error(message: string, error?: any): void {
-    if (error) {
-      LogEngine.error(message, error);
-    } else {
-      LogEngine.error(message);
-    }
+    this.logWithUICheck('error', message, error);
   }
 
   /**
    * Critical level logging - always shows (except in OFF mode)
    */
   log(message: string, data?: any): void {
-    if (data) {
-      LogEngine.log(message, data);
-    } else {
-      LogEngine.log(message);
-    }
+    this.logWithUICheck('log', message, data);
   }
 
   /**
@@ -114,11 +227,7 @@ class Logger {
       return this.debug(message, data);
     }
     
-    if (data) {
-      LogEngine.withoutRedaction().debug(message, data);
-    } else {
-      LogEngine.withoutRedaction().debug(message);
-    }
+    this.logWithUICheck('debug', message, data, { withoutRedaction: true });
   }
 
   /**
@@ -182,6 +291,71 @@ class Logger {
    */
   scope(module: string): Logger {
     return this.child(module.toUpperCase());
+  }
+
+  /**
+   * Enable UI mode - suppresses debug/info logs, allows errors/warnings through
+   */
+  enableUIMode(): void {
+    uiStateManager.enableUIMode();
+  }
+
+  /**
+   * Enable UI mode with optional lock to prevent accidental toggling
+   */
+  enableUIModeWithLock(): void {
+    uiStateManager.enableUIMode(true);
+  }
+
+  /**
+   * Disable UI mode, respecting locks unless forced
+   */
+  disableUIMode(force: boolean = false): boolean {
+    return uiStateManager.disableUIMode(force);
+  }
+
+  /**
+   * Release a UI mode lock
+   */
+  releaseUILock(): void {
+    uiStateManager.releaseLock();
+  }
+
+  /**
+   * Get current UI lock count (for debugging purposes)
+   */
+  getUILockCount(): number {
+    return uiStateManager.getLockCount();
+  }
+
+  /**
+   * Force reset the UI state (emergency use only)
+   */
+  forceResetUIState(): void {
+    uiStateManager.forceReset();
+  }
+
+  /**
+   * Check if UI mode is active
+   */
+  isUIMode(): boolean {
+    return uiStateManager.isUIMode;
+  }
+
+  /**
+   * Force log a critical message even in UI mode - use sparingly for emergencies
+   */
+  forceLog(message: string, data?: any): void {
+    const originalMode = uiStateManager.isUIMode;
+    uiStateManager.disableUIMode(true); // Force disable with override
+    
+    try {
+      LogEngine.error(`[CRITICAL] ${message}`, data);
+    } finally {
+      if (originalMode) {
+        uiStateManager.enableUIMode(); // Restore original mode if it was enabled
+      }
+    }
   }
 }
 

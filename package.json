@@ -47,7 +47,8 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,json,md}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,json,md}\"",
     "precommit": "yarn lint:check && yarn format:check && yarn type-check",
-    "prepublishOnly": "yarn clean && yarn build"
+    "prepublishOnly": "yarn clean && yarn build",
+    "magicr": "node dist/cli/index.js"
   },
   "dependencies": {
     "@wgtechlabs/log-engine": "^2.0.0",

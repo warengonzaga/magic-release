@@ -5,7 +5,6 @@
 // Application metadata
 export const APP_NAME = 'MagicRelease';
 export const CLI_NAME = 'magicr';
-export const APP_VERSION = '0.1.0';
 export const APP_DESCRIPTION = 'AI-powered CLI tool that automatically generates and maintains changelogs following the Keep a Changelog format';
 
 // Configuration defaults
@@ -172,7 +171,6 @@ export const URLS = {
 export default {
   APP_NAME,
   CLI_NAME,
-  APP_VERSION,
   APP_DESCRIPTION,
   DEFAULT_CONFIG,
   CHANGELOG_TYPES,

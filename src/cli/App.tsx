@@ -8,8 +8,9 @@ import BigText from 'ink-big-text';
 import Gradient from 'ink-gradient';
 import React from 'react';
 
-import { CLIFlags } from '../types/index.js';
-import { ASCII_ART, APP_VERSION, URLS } from '../constants/index.js';
+import type { CLIFlags } from '../types/index.js';
+import { ASCII_ART, URLS } from '../constants/index.js';
+import { getVersion } from '../utils/package-info.js';
 import { 
   hasValidConfig, 
   setOpenAIKey, 
@@ -20,10 +21,9 @@ import {
 } from '../utils/config-store.js';
 import { 
   isGitRepository, 
-  isCommitterConfigured,
-  createNotGitRepositoryError,
-  createCommitterNotConfiguredError 
+  isCommitterConfigured
 } from '../utils/errors.js';
+import { logger } from '../utils/logger.js';
 
 interface AppProps {
   flags: CLIFlags;
@@ -37,6 +37,10 @@ const App: React.FC<AppProps> = ({ flags }) => {
 
   if (flags.init) {
     return <InitializationInterface />;
+  }
+
+  if (flags.generateConfig) {
+    return <GenerateConfigInterface />;
   }
 
   // Handle API key operations
@@ -73,24 +77,19 @@ const App: React.FC<AppProps> = ({ flags }) => {
   }
 
   // If all checks pass, show the main interface
-  return (
-    <Box flexDirection="column">
-      <AppHeader />
-      <MainInterface flags={flags} />
-    </Box>
-  );
+  return <MainInterface flags={flags} />;
 };
 
 const AppHeader: React.FC = () => (
   <Box flexDirection="column" marginBottom={1}>
     <Gradient name="passion">
-      <BigText text="MagicR" />
+      <BigText text="Magic Release" />
     </Gradient>
     <Text>
       {ASCII_ART.LOGO} You can do magic with releases! {ASCII_ART.MAGIC}
     </Text>
     <Text>
-      Version: <Text color="green">{APP_VERSION}</Text> | 
+      Version: <Text color="green">{getVersion()}</Text> | 
       Author: <Text color="blue">Waren Gonzaga</Text>
     </Text>
     <Newline />
@@ -164,25 +163,26 @@ interface MainInterfaceProps {
 }
 
 const MainInterface: React.FC<MainInterfaceProps> = ({ flags }) => {
-  const [status, setStatus] = React.useState<'analyzing' | 'generating' | 'complete' | 'error'>('analyzing');
-  const [result, setResult] = React.useState<string>('');
-  const [error, setError] = React.useState<string>('');
+  const [result, setResult] = React.useState<{ 
+    status: 'loading' | 'success' | 'error'; 
+    content?: string; 
+    error?: string; 
+  }>({ status: 'loading' });
   
   const provider = getCurrentProvider();
   
   React.useEffect(() => {
-    const generateChangelog = async () => {
+    const runChangelog = async () => {
       try {
-        setStatus('analyzing');
+        // Keep UI mode enabled during the async operation to prevent logger interference
+        logger.enableUIMode();
         
-        // Import MagicRelease dynamically to avoid circular dependencies
+        // Import MagicRelease dynamically
         const { default: MagicRelease } = await import('../core/MagicRelease.js');
         const { getConfig } = await import('../utils/config-store.js');
         
         const config = getConfig();
         const magicRelease = new MagicRelease(config);
-        
-        setStatus('generating');
         
         const generateOptions = {
           ...(flags.dryRun && { dryRun: flags.dryRun }),
@@ -193,71 +193,80 @@ const MainInterface: React.FC<MainInterfaceProps> = ({ flags }) => {
         
         const changelog = await magicRelease.generate(generateOptions);
         
-        setResult(changelog);
-        setStatus('complete');
+        setResult({ 
+          status: 'success', 
+          content: changelog 
+        });
         
       } catch (err: any) {
-        setError(err.message || 'Unknown error occurred');
-        setStatus('error');
+        setResult({ 
+          status: 'error', 
+          error: err.message || 'Unknown error occurred' 
+        });
+      } finally {
+        // Ensure UI mode remains enabled to prevent further output
+        logger.enableUIMode();
       }
     };
     
-    generateChangelog();
-  }, [flags]);
+    runChangelog();
+  }, [flags.dryRun, flags.verbose, flags.from, flags.to]);
   
   return (
     <Box flexDirection="column">
-      <Text color="green">
-        {ASCII_ART.SUCCESS} Ready to generate changelog!
-      </Text>
-      <Text>
-        Provider: <Text color="cyan">{provider}</Text>
-      </Text>
-      <Newline />
-      
-      {flags.verbose && (
-        <Text color="gray">Verbose mode enabled</Text>
-      )}
-      
-      {flags.dryRun && (
-        <Text color="yellow">Dry run mode - no files will be modified</Text>
-      )}
-      
-      {status === 'analyzing' && (
+      {/* Static Header - Always at the top */}
+      <Box flexDirection="column" marginBottom={1}>
+        <Gradient name="passion">
+          <BigText text="Magic Release" />
+        </Gradient>
         <Text>
-          {ASCII_ART.LOADING} Analyzing repository...
+          {ASCII_ART.LOGO} You can do magic with releases! {ASCII_ART.MAGIC}
         </Text>
-      )}
-      
-      {status === 'generating' && (
         <Text>
-          {ASCII_ART.MAGIC} Generating changelog with AI...
+          Version: <Text color="green">{getVersion()}</Text> | 
+          Author: <Text color="blue">Waren Gonzaga</Text> | 
+          Provider: <Text color="cyan">{provider}</Text>
         </Text>
-      )}
-      
-      {status === 'complete' && (
-        <>
+        <Text>{'='.repeat(60)}</Text>
+      </Box>
+
+      {/* Status Section */}
+      <Box flexDirection="column" marginBottom={1}>
+        {flags.verbose && (
+          <Text color="gray">• Verbose mode enabled</Text>
+        )}
+        
+        {flags.dryRun && (
+          <Text color="yellow">• Dry run mode - no files will be modified</Text>
+        )}
+
+        {result.status === 'loading' && (
+          <Text color="blue">
+            {ASCII_ART.LOADING} Generating changelog...
+          </Text>
+        )}
+        
+        {result.status === 'success' && (
           <Text color="green">
             {ASCII_ART.SUCCESS} Changelog generated successfully!
           </Text>
-          {flags.dryRun && (
-            <>
-              <Newline />
-              <Text color="yellow">Generated changelog preview:</Text>
-              <Text color="gray">{'='.repeat(50)}</Text>
-              <Text>{result.substring(0, 500)}...</Text>
-              <Text color="gray">{'='.repeat(50)}</Text>
-            </>
-          )}
-        </>
-      )}
-      
-      {status === 'error' && (
-        <>
+        )}
+        
+        {result.status === 'error' && (
           <Text color="red">
-            {ASCII_ART.ERROR} Error: {error}
+            {ASCII_ART.ERROR} Error: {result.error}
           </Text>
-        </>
+        )}
+      </Box>
+
+      {/* Success Preview Section */}
+      {result.status === 'success' && flags.dryRun && result.content && (
+        <Box flexDirection="column" marginTop={1}>
+          <Text color="yellow">Generated changelog preview:</Text>
+          <Text color="gray">{'='.repeat(50)}</Text>
+          <Text>{result.content.substring(0, 300)}...</Text>
+          <Text color="gray">{'='.repeat(50)}</Text>
+        </Box>
       )}
     </Box>
   );
@@ -298,19 +307,22 @@ const ConfigurationInterface: React.FC = () => {
 };
 
 const InitializationInterface: React.FC = () => {
-  const [status, setStatus] = React.useState<'checking' | 'ready' | 'complete' | 'error'>('checking');
-  const [checks, setChecks] = React.useState({
-    gitRepo: false,
-    gitConfig: false,
-    packageJson: false,
-    changelog: false
-  });
+  const [result, setResult] = React.useState<{
+    status: 'checking' | 'ready' | 'error';
+    checks?: {
+      gitRepo: boolean;
+      gitConfig: boolean;
+      packageJson: boolean;
+      changelog: boolean;
+    };
+  }>({ status: 'checking' });
 
   React.useEffect(() => {
     const runChecks = async () => {
-      setStatus('checking');
-      
       try {
+        // Ensure UI mode is enabled during async operations
+        logger.enableUIMode();
+        
         const gitRepo = isGitRepository();
         const gitConfig = isCommitterConfigured();
         
@@ -332,10 +344,16 @@ const InitializationInterface: React.FC = () => {
           changelog = false;
         }
 
-        setChecks({ gitRepo, gitConfig, packageJson, changelog });
-        setStatus('ready');
+        // Single state update to prevent multiple re-renders
+        setResult({
+          status: 'ready',
+          checks: { gitRepo, gitConfig, packageJson, changelog }
+        });
       } catch (err) {
-        setStatus('error');
+        setResult({ status: 'error' });
+      } finally {
+        // Ensure UI mode remains enabled
+        logger.enableUIMode();
       }
     };
 
@@ -350,36 +368,36 @@ const InitializationInterface: React.FC = () => {
       </Text>
       <Newline />
 
-      {status === 'checking' && (
+      {result.status === 'checking' && (
         <Text>
           {ASCII_ART.LOADING} Checking project setup...
         </Text>
       )}
 
-      {status === 'ready' && (
+      {result.status === 'ready' && result.checks && (
         <>
           <Text>Project Check Results:</Text>
           <Newline />
           
-          <Text color={checks.gitRepo ? 'green' : 'red'}>
-            {checks.gitRepo ? '✅' : '❌'} Git repository
+          <Text color={result.checks.gitRepo ? 'green' : 'red'}>
+            {result.checks.gitRepo ? '✅' : '❌'} Git repository
           </Text>
           
-          <Text color={checks.gitConfig ? 'green' : 'red'}>
-            {checks.gitConfig ? '✅' : '❌'} Git user configuration
+          <Text color={result.checks.gitConfig ? 'green' : 'red'}>
+            {result.checks.gitConfig ? '✅' : '❌'} Git user configuration
           </Text>
           
-          <Text color={checks.packageJson ? 'green' : 'yellow'}>
-            {checks.packageJson ? '✅' : '⚠️'} package.json file
+          <Text color={result.checks.packageJson ? 'green' : 'yellow'}>
+            {result.checks.packageJson ? '✅' : '⚠️'} package.json file
           </Text>
           
-          <Text color={checks.changelog ? 'yellow' : 'green'}>
-            {checks.changelog ? '⚠️' : '✅'} CHANGELOG.md {checks.changelog ? '(exists - will be updated)' : '(will be created)'}
+          <Text color={result.checks.changelog ? 'yellow' : 'green'}>
+            {result.checks.changelog ? '⚠️' : '✅'} CHANGELOG.md {result.checks.changelog ? '(exists - will be updated)' : '(will be created)'}
           </Text>
           
           <Newline />
           
-          {checks.gitRepo && checks.gitConfig ? (
+          {result.checks.gitRepo && result.checks.gitConfig ? (
             <Text color="green">
               {ASCII_ART.SUCCESS} Project is ready for Magic Release!
             </Text>
@@ -391,7 +409,7 @@ const InitializationInterface: React.FC = () => {
         </>
       )}
 
-      {status === 'error' && (
+      {result.status === 'error' && (
         <Text color="red">
           {ASCII_ART.ERROR} Error checking project setup
         </Text>
@@ -482,6 +500,124 @@ const TestApiKeyInterface: React.FC<TestApiKeyInterfaceProps> = ({ apiKey }) => 
               </Text>
             </>
           )}
+        </>
+      )}
+    </Box>
+  );
+};
+
+const GenerateConfigInterface: React.FC = () => {
+  const [status, setStatus] = React.useState<'generating' | 'success' | 'error' | 'exists'>('generating');
+  const [configPath, setConfigPath] = React.useState<string>('');
+
+  React.useEffect(() => {
+    const generateConfig = async () => {
+      try {
+        // Ensure UI mode is enabled during async operations
+        logger.enableUIMode();
+        
+        const { writeFileSync, existsSync } = await import('fs');
+        const { join } = await import('path');
+        const { generateSampleConfig, CONFIG_FILENAMES } = await import('../utils/project-config.js');
+        
+        // Check if any config file already exists
+        const cwd = process.cwd();
+        const existingConfig = CONFIG_FILENAMES.find(filename => 
+          existsSync(join(cwd, filename))
+        );
+        
+        if (existingConfig) {
+          setConfigPath(join(cwd, existingConfig));
+          setStatus('exists');
+          return;
+        }
+        
+        // Generate new config file
+        const sampleConfig = generateSampleConfig();
+        const newConfigPath = join(cwd, '.magicrrc');
+        
+        writeFileSync(newConfigPath, sampleConfig, 'utf-8');
+        
+        setConfigPath(newConfigPath);
+        setStatus('success');
+        
+      } catch (err: any) {
+        setStatus('error');
+      } finally {
+        // Ensure UI mode remains enabled
+        logger.enableUIMode();
+      }
+    };
+
+    generateConfig();
+  }, []);
+
+  React.useEffect(() => {
+    if (status !== 'generating') {
+      const timer = setTimeout(() => process.exit(status === 'success' ? 0 : 1), 3000);
+      return () => clearTimeout(timer);
+    }
+    return undefined;
+  }, [status]);
+
+  return (
+    <Box flexDirection="column">
+      <AppHeader />
+      <Text color="cyan">
+        {ASCII_ART.MAGIC} Generate Project Configuration
+      </Text>
+      <Newline />
+
+      {status === 'generating' && (
+        <Text>
+          {ASCII_ART.LOADING} Generating .magicrrc configuration file...
+        </Text>
+      )}
+
+      {status === 'success' && (
+        <>
+          <Text color="green">
+            {ASCII_ART.SUCCESS} Configuration file generated successfully!
+          </Text>
+          <Newline />
+          <Text>
+            Created: <Text color="cyan">{configPath}</Text>
+          </Text>
+          <Newline />
+          <Text>
+            You can now customize your Magic Release settings by editing this file.
+          </Text>
+          <Text color="gray">
+            The file contains examples for all available configuration options.
+          </Text>
+        </>
+      )}
+
+      {status === 'exists' && (
+        <>
+          <Text color="yellow">
+            {ASCII_ART.WARNING} Configuration file already exists!
+          </Text>
+          <Newline />
+          <Text>
+            Found: <Text color="cyan">{configPath}</Text>
+          </Text>
+          <Newline />
+          <Text>
+            To regenerate, please delete the existing file first.
+          </Text>
+        </>
+      )}
+
+      {status === 'error' && (
+        <>
+          <Text color="red">
+            {ASCII_ART.ERROR} Failed to generate configuration file
+          </Text>
+          <Newline />
+          <Text>
+            Please check your file permissions and try again.
+          </Text>
         </>
       )}
     </Box>

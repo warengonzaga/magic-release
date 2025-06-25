@@ -131,6 +131,7 @@ export interface CLIFlags {
   deleteApiKey?: boolean;
   config?: boolean;
   init?: boolean;
+  generateConfig?: boolean;
   verbose?: boolean;
   dryRun?: boolean;
   from?: string;
