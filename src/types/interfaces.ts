@@ -138,19 +138,19 @@ export interface CLIFlags {
   setKeyUnsafe?: string;
   testKey?: string;
   deleteKey?: boolean;
-  
+
   // Configuration
   config?: boolean;
   init?: boolean;
   generateConfig?: boolean;
-  
+
   // Execution
   verbose?: boolean;
   debug?: boolean;
   dryRun?: boolean;
   from?: string;
   to?: string;
-  
+
   // Help and version
   help?: boolean;
   version?: boolean;

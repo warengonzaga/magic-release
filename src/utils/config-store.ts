@@ -183,7 +183,7 @@ export const setCurrentProvider = (provider: ProviderType): void => {
   if (!apiKey) {
     throw createMissingAPIKeyError(provider);
   }
-  
+
   config.set('provider', provider);
   console.log(`✅ Switched to ${provider} provider`);
 };
@@ -308,14 +308,18 @@ export const getAllConfig = (): StoredConfig => {
 /**
  * List all providers and their key status
  */
-export const listAllProviders = (): { provider: ProviderType; hasKey: boolean; isCurrent: boolean }[] => {
+export const listAllProviders = (): {
+  provider: ProviderType;
+  hasKey: boolean;
+  isCurrent: boolean;
+}[] => {
   const currentProvider = getCurrentProvider();
   const providers: ProviderType[] = ['openai', 'anthropic', 'azure'];
-  
+
   return providers.map(provider => ({
     provider,
     hasKey: Boolean(config.get(provider)),
-    isCurrent: provider === currentProvider
+    isCurrent: provider === currentProvider,
   }));
 };
 

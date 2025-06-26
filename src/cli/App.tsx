@@ -88,8 +88,8 @@ const App: React.FC<AppProps> = ({ flags }) => {
   // Show simple result message if there was an action
   if (actionResult) {
     return (
-      <Box flexDirection="column">
-        <Text color="red">{actionResult}</Text>
+      <Box flexDirection='column'>
+        <Text color='red'>{actionResult}</Text>
       </Box>
     );
   }
@@ -305,23 +305,87 @@ const MainInterface: React.FC<MainInterfaceProps> = ({ flags }) => {
 };
 
 const ConfigurationInterface: React.FC = () => {
+  const [providers, setProviders] = React.useState<
+    { provider: ProviderType; hasKey: boolean; isCurrent: boolean }[]
+  >([]);
+
+  React.useEffect(() => {
+    try {
+      const providerList = listAllProviders();
+      setProviders(providerList);
+    } catch {
+      // Handle error gracefully if config is not accessible
+      setProviders([]);
+    }
+  }, []);
+
   return (
     <Box flexDirection='column'>
       <AppHeader />
-      <Text color='cyan'>{ASCII_ART.MAGIC} Interactive Configuration</Text>
+      <Text color='cyan'>{ASCII_ART.MAGIC} Configuration Overview</Text>
       <Newline />
 
-      <Text>For configuration, please use one of these commands:</Text>
+      <Text color='yellow'>Provider Settings:</Text>
       <Newline />
-      <Text color='green'>magicr --set-api-key=&lt;your-openai-key&gt;</Text>
-      <Text color='gray'>Set your OpenAI API key</Text>
+
+      {providers.length > 0 ? (
+        providers.map(({ provider, hasKey, isCurrent }) => (
+          <Box key={provider} flexDirection='column' marginBottom={1}>
+            <Text>
+              <Text color={isCurrent ? 'green' : 'white'}>
+                {provider.toUpperCase()} {isCurrent ? '(current)' : ''}
+              </Text>
+              <Text color={hasKey ? 'green' : 'red'}>
+                {' '}
+                {hasKey ? '✅ API key configured' : '❌ No API key'}
+              </Text>
+            </Text>
+          </Box>
+        ))
+      ) : (
+        <Text color='gray'>No providers configured</Text>
+      )}
+
       <Newline />
-      <Text color='green'>magicr --delete-api-key</Text>
-      <Text color='gray'>Remove stored API key</Text>
+      <Text>Configuration Commands:</Text>
       <Newline />
-      <Text>
-        You can get an API key from: <Text color='cyan'>{URLS.OPENAI_KEYS}</Text>
-      </Text>
+
+      <Text color='green'>magicr --provider</Text>
+      <Text color='gray'>List all providers and their status</Text>
+      <Newline />
+
+      <Text color='green'>magicr --provider openai --set-key sk-your-key</Text>
+      <Text color='gray'>Set OpenAI API key and switch to OpenAI</Text>
+      <Newline />
+
+      <Text color='green'>magicr --provider anthropic --set-key sk-ant-your-key</Text>
+      <Text color='gray'>Set Anthropic API key and switch to Anthropic</Text>
+      <Newline />
+
+      <Text color='green'>magicr --provider azure --set-key your-key</Text>
+      <Text color='gray'>Set Azure API key and switch to Azure</Text>
+      <Newline />
+
+      <Text color='green'>magicr --set-key your-key</Text>
+      <Text color='gray'>Auto-detect provider from key format</Text>
+      <Newline />
+
+      <Text color='green'>magicr --test-key your-key</Text>
+      <Text color='gray'>Test if an API key is working</Text>
+      <Newline />
+
+      <Text color='green'>magicr --delete-key</Text>
+      <Text color='gray'>Remove API key for current provider</Text>
+      <Newline />
+
+      <Text color='green'>magicr --generate-config</Text>
+      <Text color='gray'>Generate .magicrrc project configuration file</Text>
+      <Newline />
+
+      <Text>Provider Documentation:</Text>
+      <Text color='cyan'>OpenAI: {URLS.OPENAI_KEYS}</Text>
+      <Text color='cyan'>Anthropic: https://console.anthropic.com/account/keys</Text>
+      <Text color='cyan'>Azure: https://portal.azure.com</Text>
     </Box>
   );
 };
@@ -619,12 +683,9 @@ const handleProviderSwitchEffect = async (provider: ProviderType): Promise<void>
   setTimeout(() => process.exit(0), 100); // Delay exit to let React finish
 };
 
-const handleSetKeyEffect = async (
-  apiKey: string,
-  provider?: ProviderType
-): Promise<void> => {
+const handleSetKeyEffect = async (apiKey: string, provider?: ProviderType): Promise<void> => {
   let targetProvider = provider;
-  
+
   // If no provider specified, try to auto-detect from key format
   if (!targetProvider) {
     const detected = detectProviderFromKey(apiKey);
@@ -637,17 +698,14 @@ const handleSetKeyEffect = async (
       console.log(`⚠️ Could not auto-detect provider, using ${targetProvider}`);
     }
   }
-  
+
   await setProviderApiKey(targetProvider, apiKey);
   setTimeout(() => process.exit(0), 100); // Delay exit to let React finish
 };
 
-const handleSetKeyUnsafeEffect = async (
-  apiKey: string,
-  provider?: ProviderType
-): Promise<void> => {
+const handleSetKeyUnsafeEffect = async (apiKey: string, provider?: ProviderType): Promise<void> => {
   let targetProvider = provider;
-  
+
   // If no provider specified, try to auto-detect from key format
   if (!targetProvider) {
     const detected = detectProviderFromKey(apiKey);
@@ -660,7 +718,7 @@ const handleSetKeyUnsafeEffect = async (
       console.log(`⚠️ Could not auto-detect provider, using ${targetProvider}`);
     }
   }
-  
+
   setProviderApiKeyUnsafe(targetProvider, apiKey);
   setTimeout(() => process.exit(0), 100); // Delay exit to let React finish
 };
@@ -677,13 +735,13 @@ const handleDeleteKeyEffect = async (provider?: ProviderType): Promise<void> => 
 // List providers interface
 const ListProvidersInterface: React.FC = () => {
   const providers = listAllProviders();
-  
+
   return (
-    <Box flexDirection="column">
+    <Box flexDirection='column'>
       <AppHeader />
-      <Text color="cyan">📋 Configured API Providers</Text>
+      <Text color='cyan'>📋 Configured API Providers</Text>
       <Newline />
-      
+
       {providers.map(({ provider, hasKey, isCurrent }) => (
         <Box key={provider} marginBottom={1}>
           <Text color={isCurrent ? 'green' : 'gray'}>
@@ -693,14 +751,12 @@ const ListProvidersInterface: React.FC = () => {
           </Text>
         </Box>
       ))}
-      
+
       <Newline />
-      <Text color="yellow">
+      <Text color='yellow'>
         Use --provider &lt;name&gt; --set-key &lt;key&gt; to configure a provider
       </Text>
-      <Text color="yellow">
-        Use --provider &lt;name&gt; to switch providers
-      </Text>
+      <Text color='yellow'>Use --provider &lt;name&gt; to switch providers</Text>
     </Box>
   );
 };
