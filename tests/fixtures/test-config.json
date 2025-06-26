@@ -1,0 +1,27 @@
+{
+  "llm": {
+    "provider": "openai",
+    "model": "gpt-3.5-turbo",
+    "apiKey": "test-api-key"
+  },
+  "git": {
+    "includeAllCommits": false,
+    "tagPattern": "v*",
+    "excludePatterns": [
+      "^(chore|docs|style|refactor):",
+      "^Merge (branch|pull request)",
+      "^(fixup|squash)!"
+    ]
+  },
+  "changelog": {
+    "type": "keep-a-changelog",
+    "filePath": "CHANGELOG.md",
+    "includeBreakingChanges": true,
+    "includeCommitLinks": true,
+    "groupByType": true
+  },
+  "output": {
+    "writeToFile": true,
+    "printToConsole": false
+  }
+}

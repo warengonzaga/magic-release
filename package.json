@@ -11,7 +11,10 @@
     "automation",
     "semantic-versioning"
   ],
-  "author": "Waren Gonzaga <email@warengonzaga.com> (https://warengonzaga.com)",
+  "author": "Waren Gonzaga <opensource@warengonzaga.com> (https://warengonzaga.com)",
+  "contributors": [
+    "WG Tech Labs <opensource@wgtechlabs.com> (https://wgtechlabs.com)"
+  ],
   "license": "GPL-3.0",
   "type": "module",
   "repository": {
@@ -48,6 +51,10 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx,json,md}\"",
     "precommit": "yarn lint:check && yarn format:check && yarn type-check",
     "prepublishOnly": "yarn clean && yarn build",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:ci": "jest --ci --coverage --watchAll=false",
     "magicr": "node dist/cli/index.js"
   },
   "dependencies": {
@@ -69,6 +76,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@types/jest": "^30.0.0",
     "@types/node": "^22.7.9",
     "@types/react": "^18.3.12",
     "@types/semver": "^7.7.0",
@@ -82,8 +90,10 @@
     "eslint-plugin-react": "^7.37.2",
     "eslint-plugin-react-hooks": "^5.0.0",
     "eslint-plugin-security": "^3.0.1",
+    "jest": "^30.0.3",
     "prettier": "^3.3.3",
     "rimraf": "^6.0.1",
+    "ts-jest": "^29.4.0",
     "tsup": "^8.3.5",
     "typescript": "^5.6.3"
   }

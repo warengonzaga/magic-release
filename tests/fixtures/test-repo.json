@@ -1,0 +1,11 @@
+{
+  "name": "test-project",
+  "version": "1.0.0",
+  "description": "Test project for MagicRelease integration tests",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/test/test-project.git"
+  },
+  "author": "Test Author <test@example.com>",
+  "license": "MIT"
+}

@@ -4,21 +4,22 @@
  */
 
 import path from 'path';
-import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 
 import GitService from './git/GitService.js';
 import CommitParser from './git/CommitParser.js';
 import TagManager from './git/TagManager.js';
 import LLMService from './llm/LLMService.js';
+import KeepChangelogGenerator from './generator/KeepChangelogGenerator.js';
+import ChangelogParser from './generator/ChangelogParser.js';
 import type { 
   MagicReleaseConfig, 
   RepositoryAnalysis,
   CLIFlags,
-  Commit
+  Commit,
+  ChangelogEntry,
+  ChangeType
 } from '../types/index.js';
-import { 
-  ChangelogError 
-} from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
 
 export interface GenerateOptions {
@@ -35,6 +36,8 @@ export class MagicRelease {
   private commitParser: CommitParser;
   private tagManager: TagManager;
   private llmService: LLMService;
+  private changelogGenerator: KeepChangelogGenerator;
+  private changelogParser: ChangelogParser;
   private cwd: string;
 
   constructor(config: MagicReleaseConfig, cwd: string = process.cwd()) {
@@ -46,6 +49,8 @@ export class MagicRelease {
     this.commitParser = new CommitParser();
     this.tagManager = new TagManager(cwd);
     this.llmService = LLMService.fromConfig(config);
+    this.changelogGenerator = new KeepChangelogGenerator(config);
+    this.changelogParser = new ChangelogParser();
 
     logger.info('MagicRelease initialized', {
       cwd: this.cwd,
@@ -135,26 +140,85 @@ export class MagicRelease {
   private async generateChangelogContent(analysis: RepositoryAnalysis): Promise<string> {
     logger.debug('Generating changelog content');
 
-    // Format commits for LLM
-    const commitsText = this.formatCommitsForLLM(analysis.commits);
+    // Convert commits to changelog entries
+    const entries = await this.createChangelogEntries(analysis);
     
-    // Get project context
-    const projectContext = this.getProjectContext();
-    
-    // Get existing changelog for style consistency
-    const existingChangelog = this.getExistingChangelog();
+    // Generate changelog using Keep a Changelog format
+    const changelogContent = await this.changelogGenerator.generate(entries, this.cwd);
 
-    // Generate using LLM
-    const generatedContent = await this.llmService.generateChangelog(
-      commitsText,
-      projectContext,
-      existingChangelog
-    );
+    return changelogContent;
+  }
 
-    // Merge with existing changelog if it exists
-    const finalContent = this.mergeWithExistingChangelog(generatedContent, existingChangelog);
+  /**
+   * Create changelog entries from repository analysis
+   */
+  private async createChangelogEntries(analysis: RepositoryAnalysis): Promise<ChangelogEntry[]> {
+    const entries: ChangelogEntry[] = [];
 
-    return finalContent;
+    if (analysis.commits.length === 0) {
+      logger.info('No commits found for changelog generation');
+      return entries;
+    }
+
+    // Group commits by potential versions or create an "Unreleased" entry
+    const unreleasedEntry: ChangelogEntry = {
+      version: 'Unreleased',
+      date: new Date(),
+      sections: new Map()
+    };
+
+    // Categorize commits using LLM
+    for (const commit of analysis.commits) {
+      try {
+        const category = await this.llmService.categorizeCommit(commit.message) as ChangeType;
+        
+        if (!unreleasedEntry.sections.has(category)) {
+          unreleasedEntry.sections.set(category, []);
+        }
+
+        const changes = unreleasedEntry.sections.get(category)!;
+        changes.push({
+          description: this.generateChangeDescription(commit),
+          commits: [commit],
+          ...(commit.scope && { scope: commit.scope }),
+          ...(commit.pr && { pr: commit.pr }),
+          ...(commit.issues && commit.issues.length > 0 && { issues: commit.issues })
+        });
+      } catch (error) {
+        logger.warn(`Failed to categorize commit: ${commit.hash}`, error);
+        // Default to 'Changed' category
+        if (!unreleasedEntry.sections.has('Changed')) {
+          unreleasedEntry.sections.set('Changed', []);
+        }
+        const changes = unreleasedEntry.sections.get('Changed')!;
+        changes.push({
+          description: this.generateChangeDescription(commit),
+          commits: [commit]
+        });
+      }
+    }
+
+    entries.push(unreleasedEntry);
+    return entries;
+  }
+
+  /**
+   * Generate user-friendly change description from commit
+   */
+  private generateChangeDescription(commit: Commit): string {
+    // Clean up the commit message for user consumption
+    let description = commit.message;
+
+    // Remove conventional commit prefixes if present
+    description = description.replace(/^(feat|fix|docs|style|refactor|test|chore|perf)(\(.+\))?:\s*/, '');
+
+    // Capitalize first letter
+    description = description.charAt(0).toUpperCase() + description.slice(1);
+
+    // Remove trailing periods
+    description = description.replace(/\.$/, '');
+
+    return description;
   }
 
   /**
@@ -191,32 +255,6 @@ export class MagicRelease {
   /**
    * Format commits for LLM processing
    */
-  private formatCommitsForLLM(commits: Commit[]): string {
-    if (commits.length === 0) {
-      return 'No commits found in the specified range.';
-    }
-
-    const formatted = commits.map(commit => {
-      let line = `- ${commit.message}`;
-      
-      if (commit.hash) {
-        line += ` (${commit.hash.substring(0, 7)})`;
-      }
-      
-      if (commit.pr) {
-        line += ` (#${commit.pr})`;
-      }
-      
-      if (commit.issues && commit.issues.length > 0) {
-        line += ` [${commit.issues.map(i => `#${i}`).join(', ')}]`;
-      }
-      
-      return line;
-    });
-
-    return formatted.join('\n');
-  }
-
   /**
    * Parse repository information from remote URL
    */
@@ -250,51 +288,6 @@ export class MagicRelease {
   }
 
   /**
-   * Get project context for better LLM understanding
-   */
-  private getProjectContext(): string {
-    const contexts: string[] = [];
-
-    // Check for package.json
-    const packageJsonPath = path.join(this.cwd, 'package.json');
-    if (existsSync(packageJsonPath)) {
-      try {
-        const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
-        contexts.push(`Project: ${packageJson.name || 'Unknown'}`);
-        if (packageJson.description) {
-          contexts.push(`Description: ${packageJson.description}`);
-        }
-        if (packageJson.keywords) {
-          contexts.push(`Keywords: ${packageJson.keywords.join(', ')}`);
-        }
-      } catch {
-        // Ignore parsing errors
-      }
-    }
-
-    // Check for README
-    const readmePaths = ['README.md', 'README.txt', 'README'];
-    for (const readmePath of readmePaths) {
-      const fullPath = path.join(this.cwd, readmePath);
-      if (existsSync(fullPath)) {
-        try {
-          const readme = readFileSync(fullPath, 'utf8');
-          // Extract first paragraph
-          const firstParagraph = readme.split('\n\n')[0]?.substring(0, 300);
-          if (firstParagraph) {
-            contexts.push(`Project Description: ${firstParagraph}`);
-          }
-        } catch {
-          // Ignore reading errors
-        }
-        break;
-      }
-    }
-
-    return contexts.join('\n');
-  }
-
-  /**
    * Get existing changelog content
    */
   private getExistingChangelog(): string | undefined {
@@ -316,79 +309,14 @@ export class MagicRelease {
    */
   private getExistingVersions(): Set<string> {
     const existing = this.getExistingChangelog();
-    const versions = new Set<string>();
-
-    if (existing) {
-      // Extract version numbers from changelog
-      const versionRegex = /##\s*\[?(\d+\.\d+\.\d+[^\]]*)\]?/g;
-      let match;
-      
-      while ((match = versionRegex.exec(existing)) !== null) {
-        if (match[1]) {
-          versions.add(match[1]);
-        }
-      }
-    }
-
-    return versions;
-  }
-
-  /**
-   * Merge new content with existing changelog
-   */
-  private mergeWithExistingChangelog(
-    newContent: string, 
-    existingContent?: string
-  ): string {
-    if (!existingContent) {
-      return this.addChangelogHeader(newContent);
-    }
-
-    // Simple merge: add new content after the header
-    const lines = existingContent.split('\n');
-    const headerEndIndex = lines.findIndex((line, index) => 
-      index > 0 && line.startsWith('## ')
-    );
-
-    if (headerEndIndex === -1) {
-      // No existing entries, append to end
-      return existingContent + '\n\n' + newContent;
-    }
-
-    // Insert new content before first existing entry
-    const beforeHeader = lines.slice(0, headerEndIndex);
-    const afterHeader = lines.slice(headerEndIndex);
-    
-    return [...beforeHeader, '', newContent, '', ...afterHeader].join('\n');
-  }
-
-  /**
-   * Add standard changelog header
-   */
-  private addChangelogHeader(content: string): string {
-    const header = `# Changelog
-
-All notable changes to this project will be documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-`;
-
-    return header + content;
+    return this.changelogParser.extractVersions(existing || '');
   }
 
   /**
    * Write changelog to file
    */
   private async writeChangelog(content: string): Promise<void> {
-    const changelogPath = this.getChangelogPath();
-    
-    try {
-      writeFileSync(changelogPath, content, 'utf8');
-    } catch (error) {
-      throw new ChangelogError(`Failed to write changelog: ${error}`);
-    }
+    await this.changelogGenerator.writeChangelog(content, this.cwd);
   }
 
   /**

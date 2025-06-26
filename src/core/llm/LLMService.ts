@@ -5,49 +5,77 @@
 
 import type { LLMMessage } from './providers/BaseProvider.js';
 import BaseProvider from './providers/BaseProvider.js';
-import OpenAIProvider from './providers/OpenAIProvider.js';
+import ProviderFactory from './ProviderFactory.js';
+import type { ProviderType } from './providers/ProviderInterface.js';
+import ChangelogPrompt from './prompts/ChangelogPrompt.js';
 import type { MagicReleaseConfig } from '../../types/index.js';
 import { LLMError, createMissingAPIKeyError } from '../../utils/errors.js';
 import { logger } from '../../utils/logger.js';
 
 export interface LLMServiceConfig {
-  provider: 'openai' | 'anthropic' | 'azure';
+  provider: ProviderType;
   apiKey: string;
   model?: string;
   temperature?: number;
   maxTokens?: number;
+  endpoint?: string; // For Azure
+  apiVersion?: string; // For Azure
+  deploymentName?: string; // For Azure
+  baseURL?: string; // For OpenAI
+  organization?: string; // For OpenAI
 }
 
 export class LLMService {
   private provider: BaseProvider;
   private config: LLMServiceConfig;
+  private promptGenerator: ChangelogPrompt;
 
   constructor(config: LLMServiceConfig) {
     this.config = config;
     this.provider = this.createProvider(config);
+    this.promptGenerator = new ChangelogPrompt({
+      llm: {
+        provider: config.provider,
+        apiKey: config.apiKey,
+        ...(config.model && { model: config.model }),
+        ...(config.temperature && { temperature: config.temperature }),
+        ...(config.maxTokens && { maxTokens: config.maxTokens })
+      },
+      changelog: {},
+      git: {}
+    });
   }
 
   /**
-   * Create LLM provider instance based on configuration
+   * Create LLM provider instance using the factory
    */
   private createProvider(config: LLMServiceConfig): BaseProvider {
-    switch (config.provider) {
-      case 'openai':
-        return new OpenAIProvider({
-          apiKey: config.apiKey,
-          model: config.model || 'gpt-4o-mini',
-          temperature: config.temperature || 0.1,
-          maxTokens: config.maxTokens || 2000
-        });
-      
-      case 'anthropic':
-        throw new LLMError('Anthropic provider not yet implemented');
-      
-      case 'azure':
-        throw new LLMError('Azure OpenAI provider not yet implemented');
-      
-      default:
-        throw new LLMError(`Unsupported LLM provider: ${config.provider}`);
+    try {
+      // Create base options object
+      const options: any = {
+        model: config.model,
+        temperature: config.temperature,
+        maxTokens: config.maxTokens,
+      };
+
+      // Add provider-specific options
+      if (config.provider === 'azure') {
+        options.endpoint = config.endpoint;
+        options.apiVersion = config.apiVersion;
+        options.deploymentName = config.deploymentName;
+      } else if (config.provider === 'openai') {
+        options.baseURL = config.baseURL;
+        options.organization = config.organization;
+      }
+
+      return ProviderFactory.createProviderFromConfig(
+        config.provider,
+        config.apiKey,
+        options
+      );
+    } catch (error) {
+      logger.error(`Failed to create ${config.provider} provider`, error);
+      throw error;
     }
   }
 
@@ -64,7 +92,7 @@ export class LLMService {
     const messages: LLMMessage[] = [
       {
         role: 'system',
-        content: this.getSystemPrompt()
+        content: this.promptGenerator.getSystemPrompt()
       },
       {
         role: 'user',
@@ -98,7 +126,7 @@ export class LLMService {
       },
       {
         role: 'user',
-        content: `Categorize this commit: ${commitMessage}`
+        content: this.promptGenerator.getCategorizationPrompt(commitMessage)
       }
     ];
 
@@ -122,7 +150,7 @@ export class LLMService {
       },
       {
         role: 'user',
-        content: `Create a release summary for this changelog:\n\n${changelogContent}`
+        content: this.promptGenerator.getReleaseSummaryPrompt(changelogContent)
       }
     ];
 
@@ -142,45 +170,14 @@ export class LLMService {
     logger.debug('Testing LLM connection');
     
     try {
-      const isConnected = await this.provider.testConnection();
-      logger.info(`LLM connection test: ${isConnected ? 'SUCCESS' : 'FAILED'}`);
+      const result = await this.provider.testConnection();
+      const isConnected = result.valid;
+      logger.info(`LLM connection test: ${isConnected ? 'SUCCESS' : 'FAILED'} - ${result.message}`);
       return isConnected;
     } catch (error) {
       logger.error('LLM connection test failed', error);
       return false;
     }
-  }
-
-  /**
-   * Get system prompt for changelog generation
-   */
-  private getSystemPrompt(): string {
-    return `You are an expert changelog generator that follows the "Keep a Changelog" format (https://keepachangelog.com/). 
-
-Your task is to:
-1. Analyze git commit messages and categorize changes into: Added, Changed, Deprecated, Removed, Fixed, Security
-2. Generate clean, user-friendly descriptions that focus on the impact for end users
-3. Group related changes together
-4. Use clear, concise language that non-technical users can understand
-5. Follow semantic versioning principles
-
-Format Guidelines:
-- Use markdown formatting
-- Start each category with ## [Category]
-- Use bullet points (- ) for individual changes
-- Include relevant issue/PR references when available
-- Avoid technical jargon when possible
-- Focus on benefits and impacts, not implementation details
-
-Categories:
-- **Added** for new features
-- **Changed** for changes in existing functionality  
-- **Deprecated** for soon-to-be removed features
-- **Removed** for now removed features
-- **Fixed** for any bug fixes
-- **Security** in case of vulnerabilities
-
-Only include categories that have changes. Do not include empty categories.`;
   }
 
   /**
@@ -226,8 +223,14 @@ Only include categories that have changes. Do not include empty categories.`;
   /**
    * Validate API key for current provider
    */
-  validateApiKey(apiKey: string): boolean {
-    return this.provider.validateApiKey(apiKey);
+  async validateApiKey(apiKey: string): Promise<boolean> {
+    try {
+      const result = await this.provider.validateApiKey(apiKey);
+      return result.valid;
+    } catch (error) {
+      logger.error('API key validation failed', error);
+      return false;
+    }
   }
 
   /**

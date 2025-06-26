@@ -3,6 +3,8 @@
  * Defines the interface for language model interactions
  */
 
+import type { ValidationResult } from './ProviderInterface.js';
+
 export interface LLMMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
@@ -45,9 +47,17 @@ export abstract class BaseProvider {
   abstract generateCompletion(messages: LLMMessage[]): Promise<LLMResponse>;
 
   /**
-   * Validate API key format
+   * Validate API key format - modern async version
    */
-  abstract validateApiKey(apiKey: string): boolean;
+  abstract validateApiKey(apiKey: string): Promise<ValidationResult>;
+
+  /**
+   * Legacy sync validation method for backward compatibility
+   */
+  validateApiKeySync(apiKey: string): boolean {
+    // Default implementation - should be overridden by providers
+    return Boolean(apiKey && apiKey.length > 0);
+  }
 
   /**
    * Get provider name
@@ -60,22 +70,15 @@ export abstract class BaseProvider {
   abstract getAvailableModels(): string[];
 
   /**
-   * Test connection to the provider
+   * Test connection to the provider with key
    */
-  async testConnection(): Promise<boolean> {
-    try {
-      const testMessages: LLMMessage[] = [
-        {
-          role: 'user',
-          content: 'Say "test" if you can respond.'
-        }
-      ];
+  abstract testConnection(key?: string): Promise<ValidationResult>;
 
-      const response = await this.generateCompletion(testMessages);
-      return response.content.toLowerCase().includes('test');
-    } catch {
-      return false;
-    }
+  /**
+   * Validate model is supported
+   */
+  validateModel(model: string): boolean {
+    return this.getAvailableModels().includes(model);
   }
 
   /**

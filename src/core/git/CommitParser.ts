@@ -87,12 +87,20 @@ export class CommitParser {
         body: gitCommit.body,
         author: gitCommit.author.name,
         date: gitCommit.author.date,
-        type: parsed.type,
-        scope: parsed.scope,
         breaking: parsed.breaking,
-        pr: parsed.prNumber,
         issues: parsed.issues
       };
+
+      // Add optional properties only if they exist
+      if (parsed.type) {
+        commit.type = parsed.type;
+      }
+      if (parsed.scope) {
+        commit.scope = parsed.scope;
+      }
+      if (parsed.prNumber) {
+        commit.pr = parsed.prNumber;
+      }
 
       if (!categorizedCommits.has(parsed.category)) {
         categorizedCommits.set(parsed.category, []);

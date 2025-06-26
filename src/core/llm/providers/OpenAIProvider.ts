@@ -5,6 +5,8 @@
 
 import type { LLMMessage, LLMResponse, LLMConfig } from './BaseProvider.js';
 import BaseProvider from './BaseProvider.js';
+import type { ProviderValidator, ValidationResult } from './ProviderInterface.js';
+import { PROVIDER_CONFIGS } from './ProviderInterface.js';
 import { createInvalidAPIKeyError, LLMError } from '../../../utils/errors.js';
 import { logger } from '../../../utils/logger.js';
 
@@ -33,9 +35,10 @@ export interface OpenAIResponse {
   };
 }
 
-export class OpenAIProvider extends BaseProvider {
+export class OpenAIProvider extends BaseProvider implements ProviderValidator {
   private baseURL: string;
   private organization?: string;
+  static config = PROVIDER_CONFIGS['openai'];
 
   constructor(config: OpenAIConfig) {
     super({
@@ -48,7 +51,7 @@ export class OpenAIProvider extends BaseProvider {
       this.organization = config.organization;
     }
 
-    if (!this.validateApiKey(config.apiKey)) {
+    if (!this.validateApiKeySync(config.apiKey)) {
       throw createInvalidAPIKeyError('OpenAI');
     }
   }
@@ -158,19 +161,19 @@ export class OpenAIProvider extends BaseProvider {
   /**
    * Validate OpenAI API key format
    */
-  validateApiKey(apiKey: string): boolean {
+  async validateApiKey(apiKey: string): Promise<ValidationResult> {
     // OpenAI API keys can be:
     // - Legacy format: sk-[48 chars] 
     // - Project format: sk-proj-[variable length]
     // - Organization format: sk-org-[variable length]
     
     if (!apiKey || typeof apiKey !== 'string') {
-      return false;
+      return { valid: false, message: 'API key is required' };
     }
 
     // Check if it starts with sk- and has reasonable length
     if (!apiKey.startsWith('sk-') || apiKey.length < 50) {
-      return false;
+      return { valid: false, message: 'Invalid OpenAI API key format' };
     }
 
     // Support different OpenAI key formats
@@ -181,7 +184,91 @@ export class OpenAIProvider extends BaseProvider {
       /^sk-[a-zA-Z0-9\-_]{48,}$/ // Generic fallback for future formats
     ];
 
+    const isValid = validPatterns.some(pattern => pattern.test(apiKey));
+    
+    return {
+      valid: isValid,
+      message: isValid ? 'API key format is valid' : 'Invalid OpenAI API key format'
+    };
+  }
+
+  /**
+   * Validate API key format (legacy method for backward compatibility)
+   */
+  override validateApiKeySync(apiKey: string): boolean {
+    if (!apiKey || typeof apiKey !== 'string') {
+      return false;
+    }
+
+    if (!apiKey.startsWith('sk-') || apiKey.length < 50) {
+      return false;
+    }
+
+    const validPatterns = [
+      /^sk-[a-zA-Z0-9]{48}$/, // Legacy format
+      /^sk-proj-[a-zA-Z0-9\-_]{40,}$/, // Project format
+      /^sk-org-[a-zA-Z0-9\-_]{40,}$/, // Organization format
+      /^sk-[a-zA-Z0-9\-_]{48,}$/ // Generic fallback for future formats
+    ];
+
     return validPatterns.some(pattern => pattern.test(apiKey));
+  }
+
+  /**
+   * Test connection to OpenAI API
+   */
+  async testConnection(key?: string): Promise<ValidationResult> {
+    const apiKey = key || this.config.apiKey;
+    logger.debug('Testing OpenAI API connection');
+
+    // First validate format
+    const formatValidation = await this.validateApiKey(apiKey);
+    if (!formatValidation.valid) {
+      return formatValidation;
+    }
+
+    try {
+      const response = await fetch('https://api.openai.com/v1/models', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.status === 200) {
+        logger.info('OpenAI API key validation successful');
+        return { 
+          valid: true, 
+          message: '✅ OpenAI API key is valid and working!' 
+        };
+      } else if (response.status === 401) {
+        logger.warn('OpenAI API key validation failed - unauthorized');
+        return { 
+          valid: false, 
+          message: '❌ Invalid OpenAI API key - unauthorized' 
+        };
+      } else {
+        logger.warn(`OpenAI API returned status ${response.status}`);
+        return { 
+          valid: true, 
+          message: '⚠️ API key appears valid (non-auth error occurred)' 
+        };
+      }
+    } catch (error) {
+      logger.error('OpenAI API connection test failed', error);
+      return { 
+        valid: false, 
+        message: `🌐 Network error: ${(error as Error).message}` 
+      };
+    }
+  }
+
+  /**
+   * Validate model is supported
+   */
+  override validateModel(model: string): boolean {
+    return OpenAIProvider.config?.supportedModels.includes(model) ?? false;
   }
 
   /**

@@ -6,6 +6,7 @@
 import Conf from 'conf';
 
 import type { MagicReleaseConfig } from '../types/index.js';
+import type { ProviderType } from '../core/llm/providers/ProviderInterface.js';
 import { ConfigError, createInvalidAPIKeyError, createMissingAPIKeyError } from './errors.js';
 import { getProjectConfig } from './project-config.js';
 
@@ -14,10 +15,17 @@ interface StoredConfig {
   openai?: string;
   anthropic?: string;
   azure?: string;
-  provider?: 'openai' | 'anthropic' | 'azure';
+  provider?: ProviderType;
   model?: string;
   temperature?: number;
   maxTokens?: number;
+  // Azure-specific
+  azureEndpoint?: string;
+  azureApiVersion?: string;
+  azureDeploymentName?: string;
+  // OpenAI-specific
+  openaiBaseURL?: string;
+  openaiOrganization?: string;
 }
 
 // Initialize conf with project name
@@ -163,9 +171,86 @@ export const getCurrentProvider = (): string | undefined => {
 /**
  * Set current provider
  */
-export const setCurrentProvider = (provider: 'openai' | 'anthropic' | 'azure'): void => {
+export const setCurrentProvider = (provider: ProviderType): void => {
   config.set('provider', provider);
 };
+
+/**
+ * Set API key for any provider with validation
+ */
+export const setProviderApiKey = async (
+  provider: ProviderType,
+  key: string,
+  skipValidation = false
+): Promise<void> => {
+  if (!skipValidation) {
+    console.log(`🔍 Validating ${provider} API key...`);
+    
+    // Use the provider-specific validation
+    const isValid = await validateProviderApiKey(provider, key);
+    if (!isValid.valid) {
+      throw createInvalidAPIKeyError(provider);
+    }
+    
+    console.log(`✅ ${provider} API key is valid and saved`);
+  } else {
+    console.log(`⚠️ ${provider} API key saved without validation`);
+  }
+  
+  config.set(provider, key);
+  config.set('provider', provider);
+};
+
+/**
+ * Set API key for any provider without validation
+ */
+export const setProviderApiKeyUnsafe = (provider: ProviderType, key: string): void => {
+  config.set(provider, key);
+  config.set('provider', provider);
+  console.log(`⚠️ ${provider} API key saved without validation`);
+};
+
+/**
+ * Get API key for specific provider
+ */
+export const getProviderApiKey = (provider: ProviderType): string | undefined => {
+  return config.get(provider);
+};
+
+/**
+ * Delete API key for specific provider
+ */
+export const deleteProviderApiKey = (provider: ProviderType): void => {
+  config.delete(provider);
+  if (config.get('provider') === provider) {
+    config.delete('provider');
+  }
+  console.log(`🗑️ ${provider} API key deleted`);
+};
+
+/**
+ * Validate API key for any provider
+ */
+async function validateProviderApiKey(provider: ProviderType, key: string): Promise<{ valid: boolean; message: string }> {
+  // Use the provider factory to create a provider and test the connection
+  try {
+    const { ProviderFactory } = await import('../core/llm/ProviderFactory.js');
+    
+    // Create a basic config for validation
+    const testProvider = ProviderFactory.createProviderFromConfig(provider, key);
+    const result = await testProvider.testConnection(key);
+    
+    return {
+      valid: result.valid,
+      message: result.message
+    };
+  } catch (error) {
+    return {
+      valid: false,
+      message: `Validation failed: ${(error as Error).message}`
+    };
+  }
+}
 
 /**
  * Get API key for current provider
@@ -261,6 +346,52 @@ export const getMaxTokens = (): number => {
 };
 
 /**
+ * Azure-specific configuration
+ */
+export const setAzureEndpoint = (endpoint: string): void => {
+  config.set('azureEndpoint', endpoint);
+};
+
+export const getAzureEndpoint = (): string | undefined => {
+  return config.get('azureEndpoint');
+};
+
+export const setAzureApiVersion = (version: string): void => {
+  config.set('azureApiVersion', version);
+};
+
+export const getAzureApiVersion = (): string => {
+  return config.get('azureApiVersion') || '2024-02-15-preview';
+};
+
+export const setAzureDeploymentName = (name: string): void => {
+  config.set('azureDeploymentName', name);
+};
+
+export const getAzureDeploymentName = (): string | undefined => {
+  return config.get('azureDeploymentName');
+};
+
+/**
+ * OpenAI-specific configuration
+ */
+export const setOpenAIBaseURL = (url: string): void => {
+  config.set('openaiBaseURL', url);
+};
+
+export const getOpenAIBaseURL = (): string | undefined => {
+  return config.get('openaiBaseURL');
+};
+
+export const setOpenAIOrganization = (org: string): void => {
+  config.set('openaiOrganization', org);
+};
+
+export const getOpenAIOrganization = (): string | undefined => {
+  return config.get('openaiOrganization');
+};
+
+/**
  * Get configuration file path for debugging
  */
 export const getConfigPath = (): string => {
@@ -304,7 +435,7 @@ export const validateConfig = (): { isValid: boolean; errors: string[] } => {
  * Merges global user config (API keys) with project-level config (.magicrrc)
  */
 export const getConfig = (): MagicReleaseConfig => {
-  const provider = getCurrentProvider() as 'openai' | 'anthropic' | 'azure' || 'openai';
+  const provider = getCurrentProvider() as ProviderType || 'openai';
   
   // Get project-level configuration from .magicrrc file
   const projectConfig = getProjectConfig();
@@ -340,6 +471,25 @@ export const getConfig = (): MagicReleaseConfig => {
   }
   if (projectConfig.llm?.maxTokens !== undefined || getMaxTokens() !== undefined) {
     config.llm.maxTokens = projectConfig.llm?.maxTokens ?? getMaxTokens();
+  }
+
+  // Add provider-specific LLM properties
+  if (provider === 'azure' || config.llm.provider === 'azure') {
+    const endpoint = getAzureEndpoint();
+    const apiVersion = getAzureApiVersion();
+    const deploymentName = getAzureDeploymentName();
+    
+    if (endpoint) config.llm.endpoint = endpoint;
+    if (apiVersion) config.llm.apiVersion = apiVersion;
+    if (deploymentName) config.llm.deploymentName = deploymentName;
+  }
+  
+  if (provider === 'openai' || config.llm.provider === 'openai') {
+    const baseURL = getOpenAIBaseURL();
+    const organization = getOpenAIOrganization();
+    
+    if (baseURL) config.llm.baseURL = baseURL;
+    if (organization) config.llm.organization = organization;
   }
 
   // Add changelog properties

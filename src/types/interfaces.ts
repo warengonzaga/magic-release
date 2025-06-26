@@ -6,6 +6,13 @@ export interface MagicReleaseConfig {
     model?: string;
     temperature?: number;
     maxTokens?: number;
+    // Azure-specific properties
+    endpoint?: string;
+    apiVersion?: string;
+    deploymentName?: string;
+    // OpenAI-specific properties
+    baseURL?: string;
+    organization?: string;
   };
   changelog: {
     filename?: string;
@@ -125,17 +132,26 @@ export interface RepositoryAnalysis {
 
 // CLI flags interface for React components
 export interface CLIFlags {
+  // Provider management
+  provider?: 'openai' | 'anthropic' | 'azure';
   setApiKey?: string;
   setApiKeyUnsafe?: string;
   testApiKey?: string;
   deleteApiKey?: boolean;
+  listProviders?: boolean;
+  
+  // Configuration
   config?: boolean;
   init?: boolean;
   generateConfig?: boolean;
+  
+  // Execution
   verbose?: boolean;
   dryRun?: boolean;
   from?: string;
   to?: string;
+  
+  // Help and version
   help?: boolean;
   version?: boolean;
 }
