@@ -15,7 +15,9 @@ export class MagicReleaseError extends Error {
 
     // Maintains proper stack trace for where our error was thrown (only available on V8)
     if ('captureStackTrace' in Error) {
-      (Error as any).captureStackTrace(this, MagicReleaseError);
+      (
+        Error as { captureStackTrace?: (thisArg: object, func: Function) => void }
+      ).captureStackTrace?.(this, MagicReleaseError);
     }
   }
 }

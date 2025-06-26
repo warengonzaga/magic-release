@@ -103,8 +103,9 @@ export const findProjectConfig = (searchPath: string = cwd()): ProjectConfig | n
 
         logger.debug(`Found project config at: ${configPath}`);
         return config;
-      } catch (error: any) {
-        logger.warn(`Failed to parse config file ${configPath}: ${error.message}`);
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        logger.warn(`Failed to parse config file ${configPath}: ${errorMessage}`);
         continue; // Try next config file
       }
     }
@@ -201,7 +202,7 @@ export const validateProjectConfig = (
   // Validate temperature
   if (
     config.llm?.temperature !== undefined &&
-    (config.llm.temperature < 0 ?? config.llm.temperature > 2)
+    (config.llm.temperature < 0 || config.llm.temperature > 2)
   ) {
     errors.push(`Invalid temperature: ${config.llm.temperature}. Must be between 0 and 2`);
   }
@@ -209,7 +210,7 @@ export const validateProjectConfig = (
   // Validate maxTokens
   if (
     config.llm?.maxTokens !== undefined &&
-    (config.llm.maxTokens < 1 ?? config.llm.maxTokens > 4096)
+    (config.llm.maxTokens < 1 || config.llm.maxTokens > 4096)
   ) {
     errors.push(`Invalid maxTokens: ${config.llm.maxTokens}. Must be between 1 and 4096`);
   }

@@ -92,12 +92,12 @@ export abstract class BaseProvider {
    * Validate message array
    */
   protected validateMessages(messages: LLMMessage[]): void {
-    if (!messages ?? messages.length === 0) {
+    if (!messages || messages.length === 0) {
       throw new Error('Messages array cannot be empty');
     }
 
     for (const message of messages) {
-      if (!message.role ?? !message.content) {
+      if (!message.role || !message.content) {
         throw new Error('Each message must have role and content');
       }
 

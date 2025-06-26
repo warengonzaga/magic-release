@@ -177,7 +177,7 @@ class Logger {
     if (!uiStateManager.isUIMode) return false;
 
     // Always allow critical errors and warnings through, even in UI mode
-    if (level === 'error' ?? level === 'warn') return false;
+    if (level === 'error' || level === 'warn') return false;
 
     // Suppress debug, info, and log during UI operations
     return true;
@@ -189,7 +189,7 @@ class Logger {
   private logWithUICheck(
     level: 'debug' | 'info' | 'warn' | 'error' | 'log',
     message: string,
-    data?: any,
+    data?: unknown,
     options?: { withoutRedaction?: boolean }
   ): void {
     if (this.shouldSuppressLog(level)) return;
@@ -208,42 +208,42 @@ class Logger {
   /**
    * Debug level logging - most verbose
    */
-  debug(message: string, data?: any): void {
+  debug(message: string, data?: unknown): void {
     this.logWithUICheck('debug', message, data);
   }
 
   /**
    * Info level logging - general information
    */
-  info(message: string, data?: any): void {
+  info(message: string, data?: unknown): void {
     this.logWithUICheck('info', message, data);
   }
 
   /**
    * Warning level logging - always shows even in UI mode
    */
-  warn(message: string, data?: any): void {
+  warn(message: string, data?: unknown): void {
     this.logWithUICheck('warn', message, data);
   }
 
   /**
    * Error level logging - always shows even in UI mode (critical for debugging)
    */
-  error(message: string, error?: any): void {
+  error(message: string, error?: unknown): void {
     this.logWithUICheck('error', message, error);
   }
 
   /**
    * Critical level logging - always shows (except in OFF mode)
    */
-  log(message: string, data?: any): void {
+  log(message: string, data?: unknown): void {
     this.logWithUICheck('log', message, data);
   }
 
   /**
    * Raw logging without redaction - use with extreme caution in development only
    */
-  debugRaw(message: string, data?: any): void {
+  debugRaw(message: string, data?: unknown): void {
     if (process.env['NODE_ENV'] !== 'development') {
       this.warn(
         'Raw logging attempted in non-development environment, using regular debug instead'
@@ -302,7 +302,7 @@ class Logger {
 
     originalMethods.forEach(method => {
       const originalMethod = childLogger[method].bind(childLogger);
-      childLogger[method] = (message: string, data?: any) => {
+      childLogger[method] = (message: string, data?: unknown): void => {
         originalMethod(`[${prefix}] ${message}`, data);
       };
     });
@@ -369,7 +369,7 @@ class Logger {
   /**
    * Force log a critical message even in UI mode - use sparingly for emergencies
    */
-  forceLog(message: string, data?: any): void {
+  forceLog(message: string, data?: unknown): void {
     const originalMode = uiStateManager.isUIMode;
     uiStateManager.disableUIMode(true); // Force disable with override
 

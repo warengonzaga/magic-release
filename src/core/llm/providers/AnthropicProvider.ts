@@ -37,6 +37,20 @@ export interface AnthropicResponse {
   };
 }
 
+interface AnthropicRequestBody {
+  model: string;
+  messages: AnthropicMessage[];
+  max_tokens: number;
+  temperature: number;
+  system?: string;
+}
+
+interface AnthropicErrorResponse {
+  error?: {
+    message?: string;
+  };
+}
+
 export class AnthropicProvider extends BaseProvider implements ProviderValidator {
   static config = PROVIDER_CONFIGS['anthropic'];
 
@@ -55,7 +69,7 @@ export class AnthropicProvider extends BaseProvider implements ProviderValidator
    * Validate API key format (sync method for backward compatibility)
    */
   override validateApiKeySync(apiKey: string): boolean {
-    if (!apiKey ?? typeof apiKey !== 'string') {
+    if (!apiKey || typeof apiKey !== 'string') {
       return false;
     }
     return AnthropicProvider.config?.apiKeyPattern.test(apiKey) ?? false;
@@ -73,7 +87,7 @@ export class AnthropicProvider extends BaseProvider implements ProviderValidator
     try {
       const response = await this.makeRequest(messages);
 
-      if (!response.content ?? response.content.length === 0) {
+      if (!response.content || response.content.length === 0) {
         throw new LLMError('No content returned from Anthropic API');
       }
 
@@ -130,11 +144,11 @@ export class AnthropicProvider extends BaseProvider implements ProviderValidator
       }
     }
 
-    const body: any = {
-      model: this.config.model,
+    const body: AnthropicRequestBody = {
+      model: this.config.model ?? 'claude-3-haiku-20240307',
       messages: anthropicMessages,
-      max_tokens: this.config.maxTokens,
-      temperature: this.config.temperature,
+      max_tokens: this.config.maxTokens ?? 1000,
+      temperature: this.config.temperature ?? 0.7,
     };
 
     if (systemMessage) {
@@ -155,7 +169,7 @@ export class AnthropicProvider extends BaseProvider implements ProviderValidator
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        const errorData = (await response.json().catch(() => ({}))) as any;
+        const errorData = (await response.json().catch(() => ({}))) as AnthropicErrorResponse;
         throw new LLMError(
           `Anthropic API error: ${response.status} - ${errorData.error?.message ?? response.statusText}`
         );

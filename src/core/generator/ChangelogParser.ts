@@ -31,7 +31,7 @@ export class ChangelogParser {
       const line = lines[i]?.trim() ?? '';
 
       // Skip empty lines and comments
-      if (!line ?? line.startsWith('<!--')) {
+      if (!line || line.startsWith('<!--')) {
         continue;
       }
 
@@ -297,7 +297,7 @@ export class ChangelogParser {
         }
 
         // Use the newer date if available
-        if (entry.date && (!existing.date ?? entry.date > existing.date)) {
+        if (entry.date && (!existing.date || entry.date > existing.date)) {
           existing.date = entry.date;
         }
       } else {

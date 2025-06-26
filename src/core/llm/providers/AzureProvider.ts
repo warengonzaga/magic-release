@@ -37,6 +37,12 @@ export interface AzureResponse {
   };
 }
 
+interface AzureErrorResponse {
+  error?: {
+    message?: string;
+  };
+}
+
 export class AzureProvider extends BaseProvider implements ProviderValidator {
   static config = PROVIDER_CONFIGS['azure'];
   private endpoint: string;
@@ -68,7 +74,7 @@ export class AzureProvider extends BaseProvider implements ProviderValidator {
    * Validate API key format (sync method for backward compatibility)
    */
   override validateApiKeySync(apiKey: string): boolean {
-    if (!apiKey ?? typeof apiKey !== 'string') {
+    if (!apiKey || typeof apiKey !== 'string') {
       return false;
     }
     return AzureProvider.config?.apiKeyPattern.test(apiKey) ?? false;
@@ -86,7 +92,7 @@ export class AzureProvider extends BaseProvider implements ProviderValidator {
     try {
       const response = await this.makeRequest(messages);
 
-      if (!response.choices ?? response.choices.length === 0) {
+      if (!response.choices || response.choices.length === 0) {
         throw new LLMError('No choices returned from Azure OpenAI API');
       }
 
@@ -157,7 +163,7 @@ export class AzureProvider extends BaseProvider implements ProviderValidator {
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        const errorData = (await response.json().catch(() => ({}))) as any;
+        const errorData = (await response.json().catch(() => ({}))) as AzureErrorResponse;
         throw new LLMError(
           `Azure OpenAI API error: ${response.status} - ${errorData.error?.message ?? response.statusText}`
         );

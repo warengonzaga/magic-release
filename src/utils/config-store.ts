@@ -148,7 +148,7 @@ export const setOpenAIKey = async (key: string, skipValidation = false): Promise
  * Set OpenAI API key without validation (for offline or connectivity issues)
  */
 export const setOpenAIKeyUnsafe = (key: string): void => {
-  if (!key ?? (typeof key !== 'string' || !key.startsWith('sk-') || key.length < 50)) {
+  if (!key || typeof key !== 'string' || !key.startsWith('sk-') || key.length < 50) {
     throw createInvalidAPIKeyError('OpenAI');
   }
   config.set('openai', key);
@@ -515,7 +515,7 @@ export const getConfig = (): MagicReleaseConfig => {
   }
 
   // Add provider-specific LLM properties
-  if (provider === 'azure' ?? config.llm.provider === 'azure') {
+  if (provider === 'azure' || config.llm.provider === 'azure') {
     const endpoint = getAzureEndpoint();
     const apiVersion = getAzureApiVersion();
     const deploymentName = getAzureDeploymentName();
@@ -525,7 +525,7 @@ export const getConfig = (): MagicReleaseConfig => {
     if (deploymentName) config.llm.deploymentName = deploymentName;
   }
 
-  if (provider === 'openai' ?? config.llm.provider === 'openai') {
+  if (provider === 'openai' || config.llm.provider === 'openai') {
     const baseURL = getOpenAIBaseURL();
     const organization = getOpenAIOrganization();
 
@@ -595,7 +595,7 @@ export const getConfig = (): MagicReleaseConfig => {
  */
 export const testAPIKey = async (
   apiKey: string
-): Promise<{ valid: boolean; message: string; details?: any }> => {
+): Promise<{ valid: boolean; message: string; details?: Record<string, unknown> }> => {
   try {
     // Basic format validation first
     if (!apiKey || typeof apiKey !== 'string') {
@@ -631,7 +631,7 @@ export const testAPIKey = async (
       clearTimeout(timeoutId);
 
       if (response.status === 200) {
-        const data = (await response.json()) as { data?: any[] };
+        const data = (await response.json()) as { data?: Record<string, unknown>[] };
         const modelCount = data.data?.length ?? 0;
         return {
           valid: true,
@@ -669,10 +669,10 @@ export const testAPIKey = async (
           details: { status: response.status, error: errorText },
         };
       }
-    } catch (fetchError: any) {
+    } catch (fetchError: unknown) {
       clearTimeout(timeoutId);
 
-      if (fetchError.name === 'AbortError') {
+      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
         return {
           valid: false,
           message: '⏱️ API test timed out. Check your internet connection or try again.',
@@ -680,17 +680,20 @@ export const testAPIKey = async (
         };
       }
 
+      const errorMessage =
+        fetchError instanceof Error ? fetchError.message : 'Unknown network error';
       return {
         valid: false,
-        message: `🌐 Network error: ${fetchError.message}. Check your internet connection.`,
-        details: { error: fetchError.message },
+        message: `🌐 Network error: ${errorMessage}. Check your internet connection.`,
+        details: { error: errorMessage },
       };
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return {
       valid: false,
-      message: `❌ Unexpected error: ${error.message}`,
-      details: { error: error.message },
+      message: `❌ Unexpected error: ${errorMessage}`,
+      details: { error: errorMessage },
     };
   }
 };

@@ -31,7 +31,7 @@ const getPackageJson = (): PackageJson => {
     const packageJsonPath = join(currentDir, '..', '..', 'package.json');
     const packageJsonContent = readFileSync(packageJsonPath, 'utf-8');
     return JSON.parse(packageJsonContent) as PackageJson;
-  } catch (error) {
+  } catch {
     // Fallback to default values if package.json cannot be read
     return {
       name: 'magicr',
