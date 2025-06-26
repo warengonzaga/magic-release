@@ -12,9 +12,6 @@
     "semantic-versioning"
   ],
   "author": "Waren Gonzaga <opensource@warengonzaga.com> (https://warengonzaga.com)",
-  "contributors": [
-    "WG Tech Labs <opensource@wgtechlabs.com> (https://wgtechlabs.com)"
-  ],
   "license": "GPL-3.0",
   "type": "module",
   "repository": {
@@ -47,9 +44,10 @@
     "lint": "eslint src --ext .ts,.tsx --fix",
     "lint:check": "eslint src --ext .ts,.tsx",
     "lint:security": "eslint src/**/*.ts --config eslint.security.config.js",
-    "secure:code": "snyk code test --org=wgtechlabs",
-    "secure:scan": "snyk test --org=wgtechlabs",
-    "secure": "yarn lint:security && yarn secure:scan",
+    "secure:code": "snyk code test --public",
+    "secure:scan": "snyk test",
+    "secure": "yarn secure:scan && yarn secure:code && yarn lint:security",
+    "security": "yarn secure",
     "format": "prettier --write \"src/**/*.{ts,tsx,json,md}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,json,md}\"",
     "precommit": "yarn lint:check && yarn format:check && yarn type-check",
