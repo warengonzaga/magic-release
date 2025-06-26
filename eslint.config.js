@@ -1,8 +1,16 @@
+import typescriptEslint from '@typescript-eslint/eslint-plugin';
+import typescriptParser from '@typescript-eslint/parser';
+import importPlugin from 'eslint-plugin-import';
+import nodePlugin from 'eslint-plugin-node';
+import prettierPlugin from 'eslint-plugin-prettier';
+import reactPlugin from 'eslint-plugin-react';
+import reactHooksPlugin from 'eslint-plugin-react-hooks';
+
 const config = [
   {
     files: ['**/*.{js,jsx,ts,tsx}'],
     languageOptions: {
-      parser: '@typescript-eslint/parser',
+      parser: typescriptParser,
       parserOptions: {
         ecmaVersion: 'latest',
         sourceType: 'module',
@@ -13,12 +21,12 @@ const config = [
       },
     },
     plugins: {
-      '@typescript-eslint': require('@typescript-eslint/eslint-plugin'),
-      'import': require('eslint-plugin-import'),
-      'node': require('eslint-plugin-node'),
-      'prettier': require('eslint-plugin-prettier'),
-      'react': require('eslint-plugin-react'),
-      'react-hooks': require('eslint-plugin-react-hooks'),
+      '@typescript-eslint': typescriptEslint,
+      'import': importPlugin,
+      'node': nodePlugin,
+      'prettier': prettierPlugin,
+      'react': reactPlugin,
+      'react-hooks': reactHooksPlugin,
     },
     rules: {
       // TypeScript specific rules
