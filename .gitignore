@@ -8,6 +8,12 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# Yarn cache and state files
+.yarn/cache/
+.yarn/install-state.gz
+.yarn/build-state.yml
+.yarn/unplugged/
+
 # Build outputs
 dist/
 build/

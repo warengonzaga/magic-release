@@ -95,7 +95,7 @@ export const ERROR_MESSAGES = {
   NOT_GIT_REPOSITORY: 'Current directory is not a Git repository',
   NO_COMMITS_FOUND: 'No commits found in the specified range',
   NO_API_KEY: 'No API key configured. Run "magicr config" to set up your API key',
-  INVALID_API_KEY: 'Invalid API key. Please check your configuration',
+  INVALID_API_CREDENTIALS: 'Invalid API credentials. Please check your configuration',
   CHANGELOG_NOT_FOUND: 'CHANGELOG.md not found',
   CONFIGURATION_ERROR: 'Configuration error',
   NETWORK_ERROR: 'Network error occurred',
