@@ -47,12 +47,12 @@ const config = new Conf<StoredConfig>({
 export const isValidOpenAIKey = async (apiKey: string): Promise<boolean> => {
   try {
     // Basic format validation - support different OpenAI key formats
-    if (!apiKey ?? typeof apiKey !== 'string') {
+    if (!apiKey || typeof apiKey !== 'string') {
       return false;
     }
 
     // Check if it starts with sk- and has reasonable length
-    if (!apiKey.startsWith('sk-') ?? apiKey.length < 50) {
+    if (!apiKey.startsWith('sk-') || apiKey.length < 50) {
       return false;
     }
 
@@ -100,18 +100,16 @@ export const isValidOpenAIKey = async (apiKey: string): Promise<boolean> => {
         // For other status codes, assume key is valid to avoid blocking users
         return true;
       }
-    } catch (fetchError: any) {
+    } catch (fetchError: unknown) {
       clearTimeout(timeoutId);
 
-      if (fetchError.name === 'AbortError') {
+      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
         logger.warn('API key validation timed out, assuming key is valid');
         return true; // Timeout - assume valid to not block user
       }
 
-      logger.warn(
-        'Network error during API key validation, assuming key is valid:',
-        fetchError.message
-      );
+      const errorMessage = fetchError instanceof Error ? fetchError.message : 'Unknown error';
+      logger.warn('Network error during API key validation, assuming key is valid:', errorMessage);
       return true; // Network errors - assume valid to not block user
     }
   } catch (error) {
@@ -126,7 +124,7 @@ export const isValidOpenAIKey = async (apiKey: string): Promise<boolean> => {
 export const setOpenAIKey = async (key: string, skipValidation = false): Promise<void> => {
   if (skipValidation) {
     // Basic format check only
-    if (!key ?? typeof key !== 'string' ?? !key.startsWith('sk-') ?? key.length < 50) {
+    if (!key || typeof key !== 'string' || !key.startsWith('sk-') || key.length < 50) {
       throw createInvalidAPIKeyError('OpenAI');
     }
     config.set('openai', key);
@@ -150,7 +148,7 @@ export const setOpenAIKey = async (key: string, skipValidation = false): Promise
  * Set OpenAI API key without validation (for offline or connectivity issues)
  */
 export const setOpenAIKeyUnsafe = (key: string): void => {
-  if (!key ?? typeof key !== 'string' ?? !key.startsWith('sk-') ?? key.length < 50) {
+  if (!key ?? (typeof key !== 'string' || !key.startsWith('sk-') || key.length < 50)) {
     throw createInvalidAPIKeyError('OpenAI');
   }
   config.set('openai', key);
@@ -358,7 +356,7 @@ export const getModel = (): string => {
  * Set temperature configuration
  */
 export const setTemperature = (temperature: number): void => {
-  if (temperature < 0 ?? temperature > 2) {
+  if (temperature < 0 || temperature > 2) {
     throw new ConfigError('Temperature must be between 0 and 2');
   }
   config.set('temperature', temperature);
@@ -375,7 +373,7 @@ export const getTemperature = (): number => {
  * Set max tokens configuration
  */
 export const setMaxTokens = (maxTokens: number): void => {
-  if (maxTokens < 1 ?? maxTokens > 4096) {
+  if (maxTokens < 1 || maxTokens > 4096) {
     throw new ConfigError('Max tokens must be between 1 and 4096');
   }
   config.set('maxTokens', maxTokens);
@@ -458,12 +456,12 @@ export const validateConfig = (): { isValid: boolean; errors: string[] } => {
   }
 
   const temperature = config.get('temperature');
-  if (temperature !== undefined && (temperature < 0 ?? temperature > 2)) {
+  if (temperature !== undefined && (temperature < 0 || temperature > 2)) {
     errors.push('Temperature must be between 0 and 2');
   }
 
   const maxTokens = config.get('maxTokens');
-  if (maxTokens !== undefined && (maxTokens < 1 ?? maxTokens > 4096)) {
+  if (maxTokens !== undefined && (maxTokens < 1 || maxTokens > 4096)) {
     errors.push('Max tokens must be between 1 and 4096');
   }
 
@@ -509,10 +507,10 @@ export const getConfig = (): MagicReleaseConfig => {
   if (projectConfig.llm?.model ?? getModel()) {
     config.llm.model = projectConfig.llm?.model ?? getModel();
   }
-  if (projectConfig.llm?.temperature !== undefined ?? getTemperature() !== undefined) {
+  if (projectConfig.llm?.temperature !== undefined || getTemperature() !== undefined) {
     config.llm.temperature = projectConfig.llm?.temperature ?? getTemperature();
   }
-  if (projectConfig.llm?.maxTokens !== undefined ?? getMaxTokens() !== undefined) {
+  if (projectConfig.llm?.maxTokens !== undefined || getMaxTokens() !== undefined) {
     config.llm.maxTokens = projectConfig.llm?.maxTokens ?? getMaxTokens();
   }
 
@@ -539,13 +537,13 @@ export const getConfig = (): MagicReleaseConfig => {
   if (projectConfig.changelog?.filename ?? 'CHANGELOG.md') {
     config.changelog.filename = projectConfig.changelog?.filename ?? 'CHANGELOG.md';
   }
-  if (projectConfig.changelog?.includeCommitLinks !== undefined ?? true) {
+  if (projectConfig.changelog?.includeCommitLinks !== undefined || true) {
     config.changelog.includeCommitLinks = projectConfig.changelog?.includeCommitLinks ?? true;
   }
-  if (projectConfig.changelog?.includePRLinks !== undefined ?? true) {
+  if (projectConfig.changelog?.includePRLinks !== undefined || true) {
     config.changelog.includePRLinks = projectConfig.changelog?.includePRLinks ?? true;
   }
-  if (projectConfig.changelog?.includeIssueLinks !== undefined ?? true) {
+  if (projectConfig.changelog?.includeIssueLinks !== undefined || true) {
     config.changelog.includeIssueLinks = projectConfig.changelog?.includeIssueLinks ?? true;
   }
   if (projectConfig.changelog?.linkFormat) {
@@ -576,16 +574,16 @@ export const getConfig = (): MagicReleaseConfig => {
   }
 
   // Add rules properties
-  if (projectConfig.rules?.minCommitsForUpdate !== undefined ?? 1) {
-    if (!config.rules) config.rules = {};
+  if (projectConfig.rules?.minCommitsForUpdate !== undefined) {
+    config.rules ??= {};
     config.rules.minCommitsForUpdate = projectConfig.rules?.minCommitsForUpdate ?? 1;
   }
-  if (projectConfig.rules?.includePreReleases !== undefined ?? false) {
-    if (!config.rules) config.rules = {};
+  if (projectConfig.rules?.includePreReleases !== undefined) {
+    config.rules ??= {};
     config.rules.includePreReleases = projectConfig.rules?.includePreReleases ?? false;
   }
-  if (projectConfig.rules?.groupUnreleasedCommits !== undefined ?? true) {
-    if (!config.rules) config.rules = {};
+  if (projectConfig.rules?.groupUnreleasedCommits !== undefined) {
+    config.rules ??= {};
     config.rules.groupUnreleasedCommits = projectConfig.rules?.groupUnreleasedCommits ?? true;
   }
 
@@ -600,14 +598,14 @@ export const testAPIKey = async (
 ): Promise<{ valid: boolean; message: string; details?: any }> => {
   try {
     // Basic format validation first
-    if (!apiKey ?? typeof apiKey !== 'string') {
+    if (!apiKey || typeof apiKey !== 'string') {
       return {
         valid: false,
         message: 'Invalid API key format. API key must be a non-empty string.',
       };
     }
 
-    if (!apiKey.startsWith('sk-') ?? apiKey.length < 50) {
+    if (!apiKey.startsWith('sk-') || apiKey.length < 50) {
       return {
         valid: false,
         message:
@@ -701,7 +699,7 @@ export const testAPIKey = async (
  * Auto-detect provider from API key format
  */
 export const detectProviderFromKey = (apiKey: string): ProviderType | null => {
-  if (!apiKey ?? typeof apiKey !== 'string') {
+  if (!apiKey || typeof apiKey !== 'string') {
     return null;
   }
 

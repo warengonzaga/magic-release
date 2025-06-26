@@ -25,48 +25,51 @@ export class ProviderFactory {
 
     switch (provider) {
       case 'openai': {
-        const openaiConfig: any = {
+        const openaiConfig = {
           apiKey: providerConfig.apiKey ?? '',
-        };
-        if (providerConfig.model) openaiConfig.model = providerConfig.model;
+        } as Record<string, unknown>;
+        if (providerConfig.model) openaiConfig['model'] = providerConfig.model;
         if (providerConfig.temperature !== undefined)
-          openaiConfig.temperature = providerConfig.temperature;
+          openaiConfig['temperature'] = providerConfig.temperature;
         if (providerConfig.maxTokens !== undefined)
-          openaiConfig.maxTokens = providerConfig.maxTokens;
-        if (providerConfig.baseURL) openaiConfig.baseURL = providerConfig.baseURL;
-        if (providerConfig.organization) openaiConfig.organization = providerConfig.organization;
+          openaiConfig['maxTokens'] = providerConfig.maxTokens;
+        if (providerConfig.baseURL) openaiConfig['baseURL'] = providerConfig.baseURL;
+        if (providerConfig.organization) openaiConfig['organization'] = providerConfig.organization;
 
-        return new OpenAIProvider(openaiConfig);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return new OpenAIProvider(openaiConfig as any);
       }
 
       case 'anthropic': {
-        const anthropicConfig: any = {
+        const anthropicConfig = {
           apiKey: providerConfig.apiKey ?? '',
-        };
-        if (providerConfig.model) anthropicConfig.model = providerConfig.model;
+        } as Record<string, unknown>;
+        if (providerConfig.model) anthropicConfig['model'] = providerConfig.model;
         if (providerConfig.temperature !== undefined)
-          anthropicConfig.temperature = providerConfig.temperature;
+          anthropicConfig['temperature'] = providerConfig.temperature;
         if (providerConfig.maxTokens !== undefined)
-          anthropicConfig.maxTokens = providerConfig.maxTokens;
+          anthropicConfig['maxTokens'] = providerConfig.maxTokens;
 
-        return new AnthropicProvider(anthropicConfig);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return new AnthropicProvider(anthropicConfig as any);
       }
 
       case 'azure': {
-        const azureConfig: any = {
+        const azureConfig = {
           apiKey: providerConfig.apiKey ?? '',
           endpoint: providerConfig.endpoint ?? '',
-        };
-        if (providerConfig.model) azureConfig.model = providerConfig.model;
+        } as Record<string, unknown>;
+        if (providerConfig.model) azureConfig['model'] = providerConfig.model;
         if (providerConfig.temperature !== undefined)
-          azureConfig.temperature = providerConfig.temperature;
+          azureConfig['temperature'] = providerConfig.temperature;
         if (providerConfig.maxTokens !== undefined)
-          azureConfig.maxTokens = providerConfig.maxTokens;
-        if (providerConfig.apiVersion) azureConfig.apiVersion = providerConfig.apiVersion;
+          azureConfig['maxTokens'] = providerConfig.maxTokens;
+        if (providerConfig.apiVersion) azureConfig['apiVersion'] = providerConfig.apiVersion;
         if (providerConfig.deploymentName)
-          azureConfig.deploymentName = providerConfig.deploymentName;
+          azureConfig['deploymentName'] = providerConfig.deploymentName;
 
-        return new AzureProvider(azureConfig);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return new AzureProvider(azureConfig as any);
       }
 
       default:
