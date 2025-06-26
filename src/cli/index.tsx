@@ -54,6 +54,7 @@ const cli = meow(
 `,
   {
     importMeta: import.meta,
+    allowUnknownFlags: false,
     flags: {
       provider: {
         type: 'string',
