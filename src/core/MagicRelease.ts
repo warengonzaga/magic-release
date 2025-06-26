@@ -13,6 +13,8 @@ import type {
   Commit,
   ChangelogEntry,
   ChangeType,
+  Tag,
+  RepositoryInfo,
 } from '../types/index.js';
 import { logger } from '../utils/logger.js';
 
@@ -96,7 +98,7 @@ export class MagicRelease {
 
     // Get repository information
     const remoteUrl = this.gitService.getRemoteUrl();
-    const repository = this.parseRepositoryInfo(remoteUrl || '');
+    const repository = this.parseRepositoryInfo(remoteUrl ?? '');
 
     // Get all tags and convert to semantic versions
     const gitTags = this.gitService.getAllTags();
@@ -129,7 +131,7 @@ export class MagicRelease {
     logger.debug('Repository analysis complete', {
       tagsCount: tags.length,
       commitsCount: commits.length,
-      commitRange: `${from || 'beginning'}..${to}`,
+      commitRange: `${from ?? 'beginning'}..${to}`,
     });
 
     return analysis;
@@ -177,25 +179,29 @@ export class MagicRelease {
           unreleasedEntry.sections.set(category, []);
         }
 
-        const changes = unreleasedEntry.sections.get(category)!;
-        changes.push({
-          description: this.generateChangeDescription(commit),
-          commits: [commit],
-          ...(commit.scope && { scope: commit.scope }),
-          ...(commit.pr && { pr: commit.pr }),
-          ...(commit.issues && commit.issues.length > 0 && { issues: commit.issues }),
-        });
+        const changes = unreleasedEntry.sections.get(category);
+        if (changes) {
+          changes.push({
+            description: this.generateChangeDescription(commit),
+            commits: [commit],
+            ...(commit.scope && { scope: commit.scope }),
+            ...(commit.pr && { pr: commit.pr }),
+            ...(commit.issues && commit.issues.length > 0 && { issues: commit.issues }),
+          });
+        }
       } catch (error) {
         logger.warn(`Failed to categorize commit: ${commit.hash}`, error);
         // Default to 'Changed' category
         if (!unreleasedEntry.sections.has('Changed')) {
           unreleasedEntry.sections.set('Changed', []);
         }
-        const changes = unreleasedEntry.sections.get('Changed')!;
-        changes.push({
-          description: this.generateChangeDescription(commit),
-          commits: [commit],
-        });
+        const changes = unreleasedEntry.sections.get('Changed');
+        if (changes) {
+          changes.push({
+            description: this.generateChangeDescription(commit),
+            commits: [commit],
+          });
+        }
       }
     }
 
@@ -230,7 +236,7 @@ export class MagicRelease {
    */
   private determineCommitRange(
     options: GenerateOptions,
-    tags: any[]
+    tags: Tag[]
   ): { from?: string; to: string } {
     if (options.from && options.to) {
       return { from: options.from, to: options.to };
@@ -262,12 +268,12 @@ export class MagicRelease {
   /**
    * Parse repository information from remote URL
    */
-  private parseRepositoryInfo(remoteUrl: string): any {
+  private parseRepositoryInfo(remoteUrl: string): RepositoryInfo {
     // Basic GitHub/GitLab URL parsing
     const githubMatch = remoteUrl.match(/github\.com[:/]([^/]+)\/([^/]+?)(?:\.git)?$/);
     const gitlabMatch = remoteUrl.match(/gitlab\.com[:/]([^/]+)\/([^/]+?)(?:\.git)?$/);
 
-    if (githubMatch) {
+    if (githubMatch?.[1] && githubMatch?.[2]) {
       return {
         owner: githubMatch[1],
         name: githubMatch[2],
@@ -275,7 +281,7 @@ export class MagicRelease {
       };
     }
 
-    if (gitlabMatch) {
+    if (gitlabMatch?.[1] && gitlabMatch?.[2]) {
       return {
         owner: gitlabMatch[1],
         name: gitlabMatch[2],
@@ -313,7 +319,7 @@ export class MagicRelease {
    */
   private getExistingVersions(): Set<string> {
     const existing = this.getExistingChangelog();
-    return this.changelogParser.extractVersions(existing || '');
+    return this.changelogParser.extractVersions(existing ?? '');
   }
 
   /**
@@ -327,7 +333,7 @@ export class MagicRelease {
    * Get changelog file path
    */
   private getChangelogPath(): string {
-    const filename = this.config.changelog?.filename || 'CHANGELOG.md';
+    const filename = this.config.changelog?.filename ?? 'CHANGELOG.md';
     return path.join(this.cwd, filename);
   }
 

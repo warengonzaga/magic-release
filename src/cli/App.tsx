@@ -23,14 +23,10 @@ import { ASCII_ART, URLS } from '../constants/index.js';
 import { getVersion } from '../utils/package-info.js';
 import {
   hasValidConfig,
-  setProviderApiKey,
-  setProviderApiKeyUnsafe,
   testAPIKey,
-  deleteProviderApiKey,
   getCurrentProvider,
   setCurrentProvider,
   listAllProviders,
-  detectProviderFromKey,
 } from '../utils/config-store.js';
 import { isGitRepository, isCommitterConfigured } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
@@ -198,7 +194,7 @@ const MainInterface: React.FC<MainInterfaceProps> = ({ flags }) => {
   const provider = getCurrentProvider();
 
   React.useEffect(() => {
-    const runChangelog = async () => {
+    const runChangelog = async (): Promise<void> => {
       try {
         // Keep UI mode enabled during the async operation to prevent logger interference
         logger.enableUIMode();
@@ -223,10 +219,11 @@ const MainInterface: React.FC<MainInterfaceProps> = ({ flags }) => {
           status: 'success',
           content: changelog,
         });
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
         setResult({
           status: 'error',
-          error: err.message || 'Unknown error occurred',
+          error: errorMessage,
         });
       } finally {
         // Ensure UI mode remains enabled to prevent further output
@@ -234,7 +231,7 @@ const MainInterface: React.FC<MainInterfaceProps> = ({ flags }) => {
       }
     };
 
-    runChangelog();
+    void runChangelog();
   }, [flags.dryRun, flags.verbose, flags.from, flags.to]);
 
   return (
@@ -386,7 +383,7 @@ const InitializationInterface: React.FC = () => {
   }>({ status: 'checking' });
 
   React.useEffect(() => {
-    const runChecks = async () => {
+    const runChecks = async (): Promise<void> => {
       try {
         // Ensure UI mode is enabled during async operations
         logger.enableUIMode();
@@ -417,7 +414,7 @@ const InitializationInterface: React.FC = () => {
           status: 'ready',
           checks: { gitRepo, gitConfig, packageJson, changelog },
         });
-      } catch (err) {
+      } catch {
         setResult({ status: 'error' });
       } finally {
         // Ensure UI mode remains enabled
@@ -425,7 +422,7 @@ const InitializationInterface: React.FC = () => {
       }
     };
 
-    runChecks();
+    void runChecks();
   }, []);
 
   return (
@@ -481,38 +478,46 @@ interface TestApiKeyInterfaceProps {
   apiKey: string;
 }
 
+interface TestDetails {
+  status?: string;
+  modelCount?: number;
+  timestamp?: string;
+  error?: string;
+}
+
 const TestApiKeyInterface: React.FC<TestApiKeyInterfaceProps> = ({ apiKey }) => {
   const [status, setStatus] = React.useState<'testing' | 'success' | 'error'>('testing');
   const [result, setResult] = React.useState<{
     valid: boolean;
     message: string;
-    details?: any;
+    details?: TestDetails;
   } | null>(null);
 
   React.useEffect(() => {
-    const runTest = async () => {
+    const runTest = async (): Promise<void> => {
       setStatus('testing');
       try {
         const testResult = await testAPIKey(apiKey);
         setResult(testResult);
         setStatus(testResult.valid ? 'success' : 'error');
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         setResult({
           valid: false,
-          message: `Test failed: ${error.message}`,
-          details: { error: error.message },
+          message: `Test failed: ${errorMessage}`,
+          details: { error: errorMessage },
         });
         setStatus('error');
       }
     };
 
-    runTest();
+    void runTest();
   }, [apiKey]);
 
   React.useEffect(() => {
     if (status !== 'testing') {
       const timer = setTimeout(() => process.exit(status === 'success' ? 0 : 1), 3000);
-      return () => clearTimeout(timer);
+      return (): void => clearTimeout(timer);
     }
     return undefined;
   }, [status]);
@@ -563,7 +568,7 @@ const GenerateConfigInterface: React.FC = () => {
   const [configPath, setConfigPath] = React.useState<string>('');
 
   React.useEffect(() => {
-    const generateConfig = async () => {
+    const generateConfig = async (): Promise<void> => {
       try {
         // Ensure UI mode is enabled during async operations
         logger.enableUIMode();
@@ -592,7 +597,7 @@ const GenerateConfigInterface: React.FC = () => {
 
         setConfigPath(newConfigPath);
         setStatus('success');
-      } catch (err: any) {
+      } catch {
         setStatus('error');
       } finally {
         // Ensure UI mode remains enabled
@@ -600,13 +605,13 @@ const GenerateConfigInterface: React.FC = () => {
       }
     };
 
-    generateConfig();
+    void generateConfig();
   }, []);
 
   React.useEffect(() => {
     if (status !== 'generating') {
       const timer = setTimeout(() => process.exit(status === 'success' ? 0 : 1), 3000);
-      return () => clearTimeout(timer);
+      return (): void => clearTimeout(timer);
     }
     return undefined;
   }, [status]);
