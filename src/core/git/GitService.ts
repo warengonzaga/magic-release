@@ -77,9 +77,19 @@ export class GitService {
 
       return this.parseCommits(output);
     } catch (error) {
-      if (error instanceof GitError && error.message.includes('unknown revision')) {
-        logger.warn(`Reference ${from ?? to} not found, returning empty commits`);
-        return [];
+      if (error instanceof GitError) {
+        // Handle various empty repository scenarios
+        if (
+          error.message.includes('unknown revision') ||
+          error.message.includes('does not have any commits yet') ||
+          error.message.includes('bad revision') ||
+          error.message.includes('ambiguous argument')
+        ) {
+          logger.warn(
+            `Reference ${from ?? to} not found or repository is empty, returning empty commits`
+          );
+          return [];
+        }
       }
       throw error;
     }
@@ -236,6 +246,18 @@ export class GitService {
   public getCommitCount(from?: string, to: string = 'HEAD'): number {
     const commits = this.getCommitsBetween(from, to);
     return commits.length;
+  }
+
+  /**
+   * Check if the repository has any commits
+   */
+  public hasCommits(): boolean {
+    try {
+      this.execGit('rev-parse HEAD');
+      return true;
+    } catch {
+      return false;
+    }
   }
 }
 

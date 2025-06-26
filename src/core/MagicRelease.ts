@@ -100,6 +100,18 @@ export class MagicRelease {
     const remoteUrl = this.gitService.getRemoteUrl();
     const repository = this.parseRepositoryInfo(remoteUrl ?? '');
 
+    // Check if repository has any commits
+    if (!this.gitService.hasCommits()) {
+      logger.warn('Repository has no commits, returning empty analysis');
+      return {
+        repository,
+        tags: [],
+        commits: [],
+        newVersions: [],
+        existingVersions: new Set<string>(),
+      };
+    }
+
     // Get all tags and convert to semantic versions
     const gitTags = this.gitService.getAllTags();
     const tags = this.tagManager.getVersionTags(gitTags);

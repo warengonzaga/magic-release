@@ -34,12 +34,12 @@ describe('AzureProvider', () => {
 
     it('should use environment variable for endpoint if not provided', () => {
       process.env['AZURE_OPENAI_ENDPOINT'] = 'https://env-endpoint.azure.com';
-      const configWithoutEndpoint = { 
-        ...mockConfig,
-        endpoint: ''
-      };
+      const { endpoint: _, ...configWithoutEndpoint } = mockConfig;
       
-      const envProvider = new AzureProvider(configWithoutEndpoint);
+      const envProvider = new AzureProvider({
+        ...configWithoutEndpoint,
+        endpoint: undefined as any, // Allow TypeScript to accept missing endpoint for test
+      });
       expect(envProvider).toBeInstanceOf(AzureProvider);
       
       delete process.env['AZURE_OPENAI_ENDPOINT'];
