@@ -101,9 +101,18 @@ const cli = meow(
       to: {
         type: 'string',
       },
+      help: {
+        type: 'boolean',
+      },
     },
   }
 );
+
+// Handle help flag explicitly before any other processing
+if (cli.flags['help']) {
+  cli.showHelp();
+  process.exit(0);
+}
 
 // Enable UI mode to suppress logger output during React Ink rendering
 logger.enableUIMode();
@@ -122,40 +131,74 @@ const handleImmediateFlags = async (): Promise<boolean> => {
     deleteProviderApiKey,
     detectProviderFromKey,
     getCurrentProvider,
+    setCurrentProvider,
+    listAllProviders,
   } = await import('../utils/config-store.js');
 
+  // Cast cli.flags to CLIFlags for proper type handling
+  const flags = cli.flags as CLIFlags;
+
   try {
-    // Handle API key operations
-    if (cli.flags.setKey) {
-      let targetProvider = cli.flags.provider as ProviderType;
-      if (!targetProvider) {
-        const detected = detectProviderFromKey(cli.flags.setKey);
+    // Handle API key operations first (these don't require provider to be configured)
+    if (flags.setKey) {
+      let targetProvider: ProviderType;
+      if (flags.provider) {
+        targetProvider = flags.provider;
+      } else {
+        const detected = detectProviderFromKey(flags.setKey);
         targetProvider = (detected ?? getCurrentProvider() ?? 'openai') as ProviderType;
       }
-      await setProviderApiKey(targetProvider, cli.flags.setKey);
+      await setProviderApiKey(targetProvider, flags.setKey);
       process.stdout.write('API key saved\n');
       return true;
     }
 
-    if (cli.flags.setKeyUnsafe) {
-      let targetProvider = cli.flags.provider as ProviderType;
-      if (!targetProvider) {
-        const detected = detectProviderFromKey(cli.flags.setKeyUnsafe);
+    if (flags.setKeyUnsafe) {
+      let targetProvider: ProviderType;
+      if (flags.provider) {
+        targetProvider = flags.provider;
+      } else {
+        const detected = detectProviderFromKey(flags.setKeyUnsafe);
         targetProvider = (detected ?? getCurrentProvider() ?? 'openai') as ProviderType;
       }
-      setProviderApiKeyUnsafe(targetProvider, cli.flags.setKeyUnsafe);
+      setProviderApiKeyUnsafe(targetProvider, flags.setKeyUnsafe);
       process.stdout.write('API key saved\n');
       return true;
     }
 
-    if (cli.flags.deleteKey) {
-      const targetProvider = (cli.flags.provider ?? getCurrentProvider()) as ProviderType;
+    if (flags.deleteKey) {
+      const targetProvider = (flags.provider ?? getCurrentProvider()) as ProviderType;
       if (!targetProvider) {
         throw new Error('No provider specified or configured');
       }
       deleteProviderApiKey(targetProvider);
       process.stdout.write('API key deleted\n');
       return true;
+    }
+
+    // Handle provider operations (only if no key operations were performed)
+    if ('provider' in flags) {
+      if (flags.provider) {
+        // Switch to specific provider
+        setCurrentProvider(flags.provider as ProviderType);
+        process.stdout.write(`Switched to ${flags.provider} provider\n`);
+        return true;
+      } else {
+        // List all providers when --provider is used without argument
+        const providers = listAllProviders();
+        process.stdout.write('📋 Configured API Providers\n\n');
+        
+        providers.forEach(({ provider, hasKey, isCurrent }) => {
+          const status = hasKey ? '✅ Key configured' : '❌ No key';
+          const current = isCurrent ? ' (current)' : '';
+          const arrow = isCurrent ? '→ ' : '  ';
+          process.stdout.write(`${arrow}${provider.toUpperCase()}: ${status}${current}\n`);
+        });
+        
+        process.stdout.write('\nUse --provider <name> --set-key <key> to configure a provider\n');
+        process.stdout.write('Use --provider <name> to switch providers\n');
+        return true;
+      }
     }
   } catch (error) {
     process.stderr.write(`Error: ${(error as Error).message}\n`);

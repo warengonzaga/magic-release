@@ -25,7 +25,6 @@ import {
   hasValidConfig,
   testAPIKey,
   getCurrentProvider,
-  setCurrentProvider,
   listAllProviders,
 } from '../utils/config-store.js';
 import { isGitRepository, isCommitterConfigured } from '../utils/errors.js';
@@ -46,17 +45,9 @@ const App: React.FC<AppProps> = ({ flags }) => {
         if (flags.config || flags.init || flags.generateConfig) {
           return; // These are handled by components
         }
-
-        // Handle provider switching or listing
-        if (flags.provider !== undefined) {
-          if (flags.provider) {
-            // Switch to specific provider
-            await handleProviderSwitchEffect(flags.provider);
-            return;
-          }
-          // Show provider list when --provider is used without argument
-          return;
-        }
+        
+        // Note: Provider operations are now handled in the CLI entry point
+        // and should not reach this component
       } catch (error) {
         setActionResult(`Error: ${(error as Error).message}`);
       }
@@ -85,11 +76,6 @@ const App: React.FC<AppProps> = ({ flags }) => {
 
   if (flags.generateConfig) {
     return <GenerateConfigInterface />;
-  }
-
-  // Handle provider listing
-  if (flags.provider !== undefined && !flags.provider) {
-    return <ListProvidersInterface />;
   }
 
   // Handle test key
@@ -666,39 +652,4 @@ const GenerateConfigInterface: React.FC = () => {
 
 // Helper functions
 // Effect handlers that don't call process.exit (for use in React components)
-const handleProviderSwitchEffect = async (provider: ProviderType): Promise<void> => {
-  setCurrentProvider(provider);
-  logger.info(`✅ Switched to ${provider} provider`);
-  setTimeout(() => process.exit(0), 100); // Delay exit to let React finish
-};
-
-// List providers interface
-const ListProvidersInterface: React.FC = () => {
-  const providers = listAllProviders();
-
-  return (
-    <Box flexDirection='column'>
-      <AppHeader />
-      <Text color='cyan'>📋 Configured API Providers</Text>
-      <Newline />
-
-      {providers.map(({ provider, hasKey, isCurrent }) => (
-        <Box key={provider} marginBottom={1}>
-          <Text color={isCurrent ? 'green' : 'gray'}>
-            {isCurrent ? '→ ' : '  '}
-            {provider.toUpperCase()}: {hasKey ? '✅ Key configured' : '❌ No key'}
-            {isCurrent ? ' (current)' : ''}
-          </Text>
-        </Box>
-      ))}
-
-      <Newline />
-      <Text color='yellow'>
-        Use --provider &lt;name&gt; --set-key &lt;key&gt; to configure a provider
-      </Text>
-      <Text color='yellow'>Use --provider &lt;name&gt; to switch providers</Text>
-    </Box>
-  );
-};
-
 export default App;
