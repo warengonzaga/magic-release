@@ -87,7 +87,11 @@ jspm_packages/
 # Configuration files that might contain sensitive data
 .magicrelease.json
 .magicr.json
+.magicrrc
 
 # Temporary files
 tmp/
 temp/
+
+# Added by Snyk
+.dccache
