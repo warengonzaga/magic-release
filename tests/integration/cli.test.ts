@@ -145,11 +145,12 @@ describe('CLI Integration Tests', () => {
       // Set up test repository with commits
       await setupTestRepository();
       
-      // Set up API key and config
-      await runCLI(['--set-api-key-unsafe', TEST_API_KEY]);
+      // Set up API key first - use the correct flag
+      await runCLI(['--set-key-unsafe', TEST_API_KEY]);
       
-      // Mock the LLM service response
+      // Mock LLM service response
       const originalFetch = global.fetch;
+      
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
@@ -181,7 +182,7 @@ describe('CLI Integration Tests', () => {
       await setupTestRepositoryWithTags();
       
       // Set up API key
-      await runCLI(['--set-api-key-unsafe', TEST_API_KEY]);
+      await runCLI(['--set-key-unsafe', TEST_API_KEY]);
       
       // Mock the LLM service response
       const originalFetch = global.fetch;
@@ -210,7 +211,7 @@ describe('CLI Integration Tests', () => {
   describe('Verbose output', () => {
     it('should provide verbose output when flag is set', async () => {
       await setupTestRepository();
-      await runCLI(['--set-api-key-unsafe', TEST_API_KEY]);
+      await runCLI(['--set-key-unsafe', TEST_API_KEY]);
       
       // Mock the LLM service response
       const originalFetch = global.fetch;

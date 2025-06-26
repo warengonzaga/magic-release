@@ -1,16 +1,24 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "module": "CommonJS",
+    "module": "ESNext",
     "moduleResolution": "Node",
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
     "isolatedModules": false,
     "verbatimModuleSyntax": false,
     "allowJs": true,
     "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
     "types": ["jest", "node"]
   },
   "include": [
     "tests/**/*",
     "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
   ]
 }

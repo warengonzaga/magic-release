@@ -10,21 +10,30 @@ export default {
     '**/__tests__/**/*.ts'
   ],
   
-  // Coverage configuration - disabled due to ESM/CommonJS mismatch
-  collectCoverage: false, // Enable later when ESM issues are resolved
+  // Coverage configuration
+  collectCoverage: true,
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/**/*.d.ts',
     '!src/cli/**/*', // Exclude CLI components for now
-    '!src/**/index.ts' // Exclude index files
+    '!src/**/index.ts', // Exclude index files
+    '!src/utils/config-store.ts', // Exclude due to module resolution issues
+    '!src/utils/package-info.ts' // Exclude due to import.meta issues
+  ],
+  coveragePathIgnorePatterns: [
+    '/node_modules/',
+    '/dist/',
+    '/coverage/',
+    'src/utils/package-info.ts' // Exclude this file due to import.meta issues
   ],
   
   // Transform configuration with custom tsconfig
   transform: {
     '^.+\\.ts$': ['ts-jest', {
-      tsconfig: 'tsconfig.test.json'
+      tsconfig: 'tsconfig.test.json',
+      useESM: true
     }]
   },
   
@@ -33,6 +42,11 @@ export default {
     '^@/(.*)$': '<rootDir>/src/$1',
     '^(.+)\\.js$': '$1'  // Map .js imports to .ts files
   },
+  
+  // Handle ES modules
+  transformIgnorePatterns: [
+    'node_modules/(?!(conf)/)'
+  ],
   
   extensionsToTreatAsEsm: ['.ts'],
   

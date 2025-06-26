@@ -30,8 +30,16 @@ interface StoredConfig {
   openaiOrganization?: string;
 }
 
-// Initialize conf with project name
-const config = new Conf<StoredConfig>({ projectName: 'magicr' });
+// Initialize conf with project name and test support
+const config = new Conf<StoredConfig>({
+  projectName: 'magicr',
+  // Use test-specific config directory when in test environment
+  ...(process.env['NODE_ENV'] === 'test' && {
+    configFileMode: 0o600,
+    projectName: 'magicr-test',
+    cwd: process.cwd(),
+  }),
+});
 
 /**
  * Validate OpenAI API key format and connectivity
