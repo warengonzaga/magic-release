@@ -53,7 +53,7 @@ export class LLMService {
   private createProvider(config: LLMServiceConfig): BaseProvider {
     try {
       // Create base options object
-      const options: any = {
+      const options: Record<string, unknown> = {
         model: config.model,
         temperature: config.temperature,
         maxTokens: config.maxTokens,
@@ -61,15 +61,19 @@ export class LLMService {
 
       // Add provider-specific options
       if (config.provider === 'azure') {
-        options.endpoint = config.endpoint;
-        options.apiVersion = config.apiVersion;
-        options.deploymentName = config.deploymentName;
+        if (config.endpoint) options['endpoint'] = config.endpoint;
+        if (config.apiVersion) options['apiVersion'] = config.apiVersion;
+        if (config.deploymentName) options['deploymentName'] = config.deploymentName;
       } else if (config.provider === 'openai') {
-        options.baseURL = config.baseURL;
-        options.organization = config.organization;
+        if (config.baseURL) options['baseURL'] = config.baseURL;
+        if (config.organization) options['organization'] = config.organization;
       }
 
-      return ProviderFactory.createProviderFromConfig(config.provider, config.apiKey, options);
+      return ProviderFactory.createProviderFromConfig(
+        config.provider,
+        config.apiKey,
+        options as Record<string, unknown>
+      );
     } catch (error) {
       logger.error(`Failed to create ${config.provider} provider`, error);
       throw error;

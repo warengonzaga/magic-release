@@ -107,7 +107,10 @@ export class CommitParser {
         categorizedCommits.set(parsed.category, []);
       }
 
-      categorizedCommits.get(parsed.category)!.push(commit);
+      const categoryCommits = categorizedCommits.get(parsed.category);
+      if (categoryCommits) {
+        categoryCommits.push(commit);
+      }
     }
 
     return categorizedCommits;
@@ -143,7 +146,7 @@ export class CommitParser {
       sec: 'Security',
     };
 
-    return typeMap[type.toLowerCase()] || 'Changed';
+    return typeMap[type.toLowerCase()] ?? 'Changed';
   }
 
   /**
@@ -251,7 +254,7 @@ export class CommitParser {
 
     if (match) {
       // Find the first non-undefined capture group
-      const prNumber = match[1] || match[2] || match[3] || match[4];
+      const prNumber = match[1] ?? match[2] ?? match[3] ?? match[4];
       return prNumber ? parseInt(prNumber, 10) : undefined;
     }
 

@@ -49,8 +49,8 @@ export class AzureProvider extends BaseProvider implements ProviderValidator {
       ...config,
     });
 
-    this.endpoint = config.endpoint || process.env['AZURE_OPENAI_ENDPOINT'] || '';
-    this.apiVersion = config.apiVersion || '2024-02-15-preview';
+    this.endpoint = config.endpoint ?? process.env['AZURE_OPENAI_ENDPOINT'] ?? '';
+    this.apiVersion = config.apiVersion ?? '2024-02-15-preview';
     this.deploymentName = config.deploymentName;
 
     if (!this.endpoint) {
@@ -68,7 +68,7 @@ export class AzureProvider extends BaseProvider implements ProviderValidator {
    * Validate API key format (sync method for backward compatibility)
    */
   override validateApiKeySync(apiKey: string): boolean {
-    if (!apiKey || typeof apiKey !== 'string') {
+    if (!apiKey ?? typeof apiKey !== 'string') {
       return false;
     }
     return AzureProvider.config?.apiKeyPattern.test(apiKey) ?? false;
@@ -86,7 +86,7 @@ export class AzureProvider extends BaseProvider implements ProviderValidator {
     try {
       const response = await this.makeRequest(messages);
 
-      if (!response.choices || response.choices.length === 0) {
+      if (!response.choices ?? response.choices.length === 0) {
         throw new LLMError('No choices returned from Azure OpenAI API');
       }
 
@@ -131,7 +131,7 @@ export class AzureProvider extends BaseProvider implements ProviderValidator {
     };
 
     // Use deployment name if provided, otherwise use model name
-    const modelOrDeployment = this.deploymentName || this.config.model;
+    const modelOrDeployment = this.deploymentName ?? this.config.model;
     const url = `${this.endpoint}/openai/deployments/${modelOrDeployment}/chat/completions?api-version=${this.apiVersion}`;
 
     const body = {
@@ -159,7 +159,7 @@ export class AzureProvider extends BaseProvider implements ProviderValidator {
       if (!response.ok) {
         const errorData = (await response.json().catch(() => ({}))) as any;
         throw new LLMError(
-          `Azure OpenAI API error: ${response.status} - ${errorData.error?.message || response.statusText}`
+          `Azure OpenAI API error: ${response.status} - ${errorData.error?.message ?? response.statusText}`
         );
       }
 
@@ -199,7 +199,7 @@ export class AzureProvider extends BaseProvider implements ProviderValidator {
    * Test connection to Azure OpenAI API
    */
   async testConnection(key?: string): Promise<ValidationResult> {
-    const apiKey = key || this.config.apiKey;
+    const apiKey = key ?? this.config.apiKey;
     logger.debug('Testing Azure OpenAI API connection');
 
     // First validate format
@@ -217,7 +217,7 @@ export class AzureProvider extends BaseProvider implements ProviderValidator {
 
     // Test with a simple API call
     try {
-      const modelOrDeployment = this.deploymentName || this.config.model;
+      const modelOrDeployment = this.deploymentName ?? this.config.model;
       const url = `${this.endpoint}/openai/deployments/${modelOrDeployment}/chat/completions?api-version=${this.apiVersion}`;
 
       const response = await fetch(url, {
@@ -284,7 +284,7 @@ export class AzureProvider extends BaseProvider implements ProviderValidator {
    */
   getAvailableModels(): string[] {
     return (
-      AzureProvider.config?.supportedModels || [
+      AzureProvider.config?.supportedModels ?? [
         'gpt-4',
         'gpt-4-turbo',
         'gpt-35-turbo',

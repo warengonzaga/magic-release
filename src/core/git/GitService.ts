@@ -7,7 +7,7 @@ import { execSync } from 'child_process';
 import { existsSync } from 'fs';
 import path from 'path';
 
-import { GitCommit, GitTag } from '../../types/index.js';
+import type { GitCommit, GitTag } from '../../types/index.js';
 import { createGitError, GitError } from '../../utils/errors.js';
 import { logger } from '../../utils/logger.js';
 
@@ -44,9 +44,10 @@ export class GitService {
       });
 
       return result.trim();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       logger.error(`Git command failed: git ${command}`, error);
-      throw createGitError(`Git command failed: ${error.message}`);
+      throw createGitError(`Git command failed: ${errorMessage}`);
     }
   }
 
@@ -77,7 +78,7 @@ export class GitService {
       return this.parseCommits(output);
     } catch (error) {
       if (error instanceof GitError && error.message.includes('unknown revision')) {
-        logger.warn(`Reference ${from || to} not found, returning empty commits`);
+        logger.warn(`Reference ${from ?? to} not found, returning empty commits`);
         return [];
       }
       throw error;
@@ -110,18 +111,18 @@ export class GitService {
       ] = parts;
 
       commits.push({
-        hash: hash?.trim() || '',
-        subject: subject?.trim() || '',
-        body: body?.trim() || '',
+        hash: hash?.trim() ?? '',
+        subject: subject?.trim() ?? '',
+        body: body?.trim() ?? '',
         author: {
-          name: authorName?.trim() || '',
-          email: authorEmail?.trim() || '',
-          date: new Date(authorDate?.trim() || Date.now()),
+          name: authorName?.trim() ?? '',
+          email: authorEmail?.trim() ?? '',
+          date: new Date(authorDate?.trim() ?? Date.now()),
         },
         committer: {
-          name: committerName?.trim() || '',
-          email: committerEmail?.trim() || '',
-          date: new Date(committerDate?.trim() || Date.now()),
+          name: committerName?.trim() ?? '',
+          email: committerEmail?.trim() ?? '',
+          date: new Date(committerDate?.trim() ?? Date.now()),
         },
       });
     }
@@ -143,7 +144,7 @@ export class GitService {
       }
 
       return this.parseTags(output);
-    } catch (error) {
+    } catch {
       logger.warn('Failed to get tags, repository might have no tags yet');
       return [];
     }
@@ -165,9 +166,9 @@ export class GitService {
       const [name, date, subject] = parts;
 
       tags.push({
-        name: name?.trim() || '',
-        date: new Date(date?.trim() || Date.now()),
-        subject: subject?.trim() || '',
+        name: name?.trim() ?? '',
+        date: new Date(date?.trim() ?? Date.now()),
+        subject: subject?.trim() ?? '',
       });
     }
 
@@ -179,7 +180,8 @@ export class GitService {
    */
   public getLatestTag(): GitTag | null {
     const tags = this.getAllTags();
-    return tags.length > 0 ? tags[0]! : null;
+    const firstTag = tags[0];
+    return firstTag ?? null;
   }
 
   /**

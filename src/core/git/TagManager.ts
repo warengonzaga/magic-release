@@ -40,9 +40,10 @@ export class TagManager {
       });
 
       return result.trim();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       logger.error(`Git command failed: git ${command}`, error);
-      throw createGitError(`Git command failed: ${error.message}`);
+      throw createGitError(`Git command failed: ${errorMessage}`);
     }
   }
 
@@ -90,14 +91,14 @@ export class TagManager {
    * Get the latest release tag (non-prerelease)
    */
   public getLatestReleaseTag(tags: Tag[]): Tag | null {
-    return tags.find(tag => !tag.isPreRelease) || null;
+    return tags.find(tag => !tag.isPreRelease) ?? null;
   }
 
   /**
    * Get the latest tag (including prereleases)
    */
   public getLatestTag(tags: Tag[]): Tag | null {
-    return tags.length > 0 ? tags[0] || null : null;
+    return tags.length > 0 ? (tags[0] ?? null) : null;
   }
 
   /**
@@ -192,11 +193,11 @@ export class TagManager {
    * Suggest next version based on conventional commits
    */
   public suggestNextVersion(currentTags: Tag[], commitTypes: string[]): VersionPlan {
-    const hasBreaking = commitTypes.some(type => type.includes('!') || type.includes('BREAKING'));
+    const hasBreaking = commitTypes.some(type => type.includes('!') ?? type.includes('BREAKING'));
     const hasFeature = commitTypes.some(
-      type => type.startsWith('feat') || type.startsWith('feature')
+      type => type.startsWith('feat') ?? type.startsWith('feature')
     );
-    const hasFix = commitTypes.some(type => type.startsWith('fix') || type.startsWith('bugfix'));
+    const hasFix = commitTypes.some(type => type.startsWith('fix') ?? type.startsWith('bugfix'));
 
     return this.planNextVersion(currentTags, hasBreaking, hasFeature, hasFix);
   }

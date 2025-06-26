@@ -47,12 +47,12 @@ const config = new Conf<StoredConfig>({
 export const isValidOpenAIKey = async (apiKey: string): Promise<boolean> => {
   try {
     // Basic format validation - support different OpenAI key formats
-    if (!apiKey || typeof apiKey !== 'string') {
+    if (!apiKey ?? typeof apiKey !== 'string') {
       return false;
     }
 
     // Check if it starts with sk- and has reasonable length
-    if (!apiKey.startsWith('sk-') || apiKey.length < 50) {
+    if (!apiKey.startsWith('sk-') ?? apiKey.length < 50) {
       return false;
     }
 
@@ -126,7 +126,7 @@ export const isValidOpenAIKey = async (apiKey: string): Promise<boolean> => {
 export const setOpenAIKey = async (key: string, skipValidation = false): Promise<void> => {
   if (skipValidation) {
     // Basic format check only
-    if (!key || typeof key !== 'string' || !key.startsWith('sk-') || key.length < 50) {
+    if (!key ?? typeof key !== 'string' ?? !key.startsWith('sk-') ?? key.length < 50) {
       throw createInvalidAPIKeyError('OpenAI');
     }
     config.set('openai', key);
@@ -150,7 +150,7 @@ export const setOpenAIKey = async (key: string, skipValidation = false): Promise
  * Set OpenAI API key without validation (for offline or connectivity issues)
  */
 export const setOpenAIKeyUnsafe = (key: string): void => {
-  if (!key || typeof key !== 'string' || !key.startsWith('sk-') || key.length < 50) {
+  if (!key ?? typeof key !== 'string' ?? !key.startsWith('sk-') ?? key.length < 50) {
     throw createInvalidAPIKeyError('OpenAI');
   }
   config.set('openai', key);
@@ -351,14 +351,14 @@ export const setModel = (model: string): void => {
  * Get model configuration
  */
 export const getModel = (): string => {
-  return config.get('model') || 'gpt-4o-mini'; // Default model like Magic Commit
+  return config.get('model') ?? 'gpt-4o-mini'; // Default model like Magic Commit
 };
 
 /**
  * Set temperature configuration
  */
 export const setTemperature = (temperature: number): void => {
-  if (temperature < 0 || temperature > 2) {
+  if (temperature < 0 ?? temperature > 2) {
     throw new ConfigError('Temperature must be between 0 and 2');
   }
   config.set('temperature', temperature);
@@ -368,14 +368,14 @@ export const setTemperature = (temperature: number): void => {
  * Get temperature configuration
  */
 export const getTemperature = (): number => {
-  return config.get('temperature') || 0.1; // Low temperature for consistent outputs
+  return config.get('temperature') ?? 0.1; // Low temperature for consistent outputs
 };
 
 /**
  * Set max tokens configuration
  */
 export const setMaxTokens = (maxTokens: number): void => {
-  if (maxTokens < 1 || maxTokens > 4096) {
+  if (maxTokens < 1 ?? maxTokens > 4096) {
     throw new ConfigError('Max tokens must be between 1 and 4096');
   }
   config.set('maxTokens', maxTokens);
@@ -385,7 +385,7 @@ export const setMaxTokens = (maxTokens: number): void => {
  * Get max tokens configuration
  */
 export const getMaxTokens = (): number => {
-  return config.get('maxTokens') || 150; // Reasonable default for commit messages
+  return config.get('maxTokens') ?? 150; // Reasonable default for commit messages
 };
 
 /**
@@ -404,7 +404,7 @@ export const setAzureApiVersion = (version: string): void => {
 };
 
 export const getAzureApiVersion = (): string => {
-  return config.get('azureApiVersion') || '2024-02-15-preview';
+  return config.get('azureApiVersion') ?? '2024-02-15-preview';
 };
 
 export const setAzureDeploymentName = (name: string): void => {
@@ -458,12 +458,12 @@ export const validateConfig = (): { isValid: boolean; errors: string[] } => {
   }
 
   const temperature = config.get('temperature');
-  if (temperature !== undefined && (temperature < 0 || temperature > 2)) {
+  if (temperature !== undefined && (temperature < 0 ?? temperature > 2)) {
     errors.push('Temperature must be between 0 and 2');
   }
 
   const maxTokens = config.get('maxTokens');
-  if (maxTokens !== undefined && (maxTokens < 1 || maxTokens > 4096)) {
+  if (maxTokens !== undefined && (maxTokens < 1 ?? maxTokens > 4096)) {
     errors.push('Max tokens must be between 1 and 4096');
   }
 
@@ -478,7 +478,7 @@ export const validateConfig = (): { isValid: boolean; errors: string[] } => {
  * Merges global user config (API keys) with project-level config (.magicrrc)
  */
 export const getConfig = (): MagicReleaseConfig => {
-  const provider = (getCurrentProvider() as ProviderType) || 'openai';
+  const provider = (getCurrentProvider() as ProviderType) ?? 'openai';
 
   // Get project-level configuration from .magicrrc file
   const projectConfig = getProjectConfig();
@@ -495,7 +495,7 @@ export const getConfig = (): MagicReleaseConfig => {
   // Build the merged configuration step by step
   const config: MagicReleaseConfig = {
     llm: {
-      provider: projectConfig.llm?.provider || provider,
+      provider: projectConfig.llm?.provider ?? provider,
     },
     changelog: {},
     git: {},
@@ -506,18 +506,18 @@ export const getConfig = (): MagicReleaseConfig => {
   if (apiKey) {
     config.llm.apiKey = apiKey;
   }
-  if (projectConfig.llm?.model || getModel()) {
-    config.llm.model = projectConfig.llm?.model || getModel();
+  if (projectConfig.llm?.model ?? getModel()) {
+    config.llm.model = projectConfig.llm?.model ?? getModel();
   }
-  if (projectConfig.llm?.temperature !== undefined || getTemperature() !== undefined) {
+  if (projectConfig.llm?.temperature !== undefined ?? getTemperature() !== undefined) {
     config.llm.temperature = projectConfig.llm?.temperature ?? getTemperature();
   }
-  if (projectConfig.llm?.maxTokens !== undefined || getMaxTokens() !== undefined) {
+  if (projectConfig.llm?.maxTokens !== undefined ?? getMaxTokens() !== undefined) {
     config.llm.maxTokens = projectConfig.llm?.maxTokens ?? getMaxTokens();
   }
 
   // Add provider-specific LLM properties
-  if (provider === 'azure' || config.llm.provider === 'azure') {
+  if (provider === 'azure' ?? config.llm.provider === 'azure') {
     const endpoint = getAzureEndpoint();
     const apiVersion = getAzureApiVersion();
     const deploymentName = getAzureDeploymentName();
@@ -527,7 +527,7 @@ export const getConfig = (): MagicReleaseConfig => {
     if (deploymentName) config.llm.deploymentName = deploymentName;
   }
 
-  if (provider === 'openai' || config.llm.provider === 'openai') {
+  if (provider === 'openai' ?? config.llm.provider === 'openai') {
     const baseURL = getOpenAIBaseURL();
     const organization = getOpenAIOrganization();
 
@@ -536,16 +536,16 @@ export const getConfig = (): MagicReleaseConfig => {
   }
 
   // Add changelog properties
-  if (projectConfig.changelog?.filename || 'CHANGELOG.md') {
-    config.changelog.filename = projectConfig.changelog?.filename || 'CHANGELOG.md';
+  if (projectConfig.changelog?.filename ?? 'CHANGELOG.md') {
+    config.changelog.filename = projectConfig.changelog?.filename ?? 'CHANGELOG.md';
   }
-  if (projectConfig.changelog?.includeCommitLinks !== undefined || true) {
+  if (projectConfig.changelog?.includeCommitLinks !== undefined ?? true) {
     config.changelog.includeCommitLinks = projectConfig.changelog?.includeCommitLinks ?? true;
   }
-  if (projectConfig.changelog?.includePRLinks !== undefined || true) {
+  if (projectConfig.changelog?.includePRLinks !== undefined ?? true) {
     config.changelog.includePRLinks = projectConfig.changelog?.includePRLinks ?? true;
   }
-  if (projectConfig.changelog?.includeIssueLinks !== undefined || true) {
+  if (projectConfig.changelog?.includeIssueLinks !== undefined ?? true) {
     config.changelog.includeIssueLinks = projectConfig.changelog?.includeIssueLinks ?? true;
   }
   if (projectConfig.changelog?.linkFormat) {
@@ -565,26 +565,26 @@ export const getConfig = (): MagicReleaseConfig => {
   }
 
   // Add git properties
-  if (projectConfig.git?.tagPattern || 'v*') {
-    config.git.tagPattern = projectConfig.git?.tagPattern || 'v*';
+  if (projectConfig.git?.tagPattern ?? 'v*') {
+    config.git.tagPattern = projectConfig.git?.tagPattern ?? 'v*';
   }
-  if (projectConfig.git?.remote || 'origin') {
-    config.git.remote = projectConfig.git?.remote || 'origin';
+  if (projectConfig.git?.remote ?? 'origin') {
+    config.git.remote = projectConfig.git?.remote ?? 'origin';
   }
   if (projectConfig.git?.repository) {
     config.git.repository = projectConfig.git.repository;
   }
 
   // Add rules properties
-  if (projectConfig.rules?.minCommitsForUpdate !== undefined || 1) {
+  if (projectConfig.rules?.minCommitsForUpdate !== undefined ?? 1) {
     if (!config.rules) config.rules = {};
     config.rules.minCommitsForUpdate = projectConfig.rules?.minCommitsForUpdate ?? 1;
   }
-  if (projectConfig.rules?.includePreReleases !== undefined || false) {
+  if (projectConfig.rules?.includePreReleases !== undefined ?? false) {
     if (!config.rules) config.rules = {};
     config.rules.includePreReleases = projectConfig.rules?.includePreReleases ?? false;
   }
-  if (projectConfig.rules?.groupUnreleasedCommits !== undefined || true) {
+  if (projectConfig.rules?.groupUnreleasedCommits !== undefined ?? true) {
     if (!config.rules) config.rules = {};
     config.rules.groupUnreleasedCommits = projectConfig.rules?.groupUnreleasedCommits ?? true;
   }
@@ -600,14 +600,14 @@ export const testAPIKey = async (
 ): Promise<{ valid: boolean; message: string; details?: any }> => {
   try {
     // Basic format validation first
-    if (!apiKey || typeof apiKey !== 'string') {
+    if (!apiKey ?? typeof apiKey !== 'string') {
       return {
         valid: false,
         message: 'Invalid API key format. API key must be a non-empty string.',
       };
     }
 
-    if (!apiKey.startsWith('sk-') || apiKey.length < 50) {
+    if (!apiKey.startsWith('sk-') ?? apiKey.length < 50) {
       return {
         valid: false,
         message:
@@ -634,7 +634,7 @@ export const testAPIKey = async (
 
       if (response.status === 200) {
         const data = (await response.json()) as { data?: any[] };
-        const modelCount = data.data?.length || 0;
+        const modelCount = data.data?.length ?? 0;
         return {
           valid: true,
           message: `✅ API key is valid! Found ${modelCount} available models.`,
@@ -701,7 +701,7 @@ export const testAPIKey = async (
  * Auto-detect provider from API key format
  */
 export const detectProviderFromKey = (apiKey: string): ProviderType | null => {
-  if (!apiKey || typeof apiKey !== 'string') {
+  if (!apiKey ?? typeof apiKey !== 'string') {
     return null;
   }
 

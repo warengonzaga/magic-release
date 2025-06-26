@@ -56,7 +56,7 @@ export class ProviderFactory {
   ): BaseProvider {
     const baseConfig: LLMConfig = {
       apiKey,
-      model: options.model || this.getDefaultModel(providerType),
+      model: options.model ?? this.getDefaultModel(providerType),
       temperature: options.temperature ?? 0.1,
       maxTokens: options.maxTokens ?? 1000,
       timeout: options.timeout ?? 30000,
@@ -87,7 +87,7 @@ export class ProviderFactory {
 
       case 'azure':
         const endpoint =
-          (options as Partial<AzureConfig>).endpoint || process.env['AZURE_OPENAI_ENDPOINT'];
+          (options as Partial<AzureConfig>).endpoint ?? process.env['AZURE_OPENAI_ENDPOINT'];
 
         if (!endpoint) {
           throw new ConfigError(

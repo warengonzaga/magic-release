@@ -28,10 +28,10 @@ export class ChangelogParser {
     let currentSection: ChangeType | null = null;
 
     for (let i = 0; i < lines.length; i++) {
-      const line = lines[i]?.trim() || '';
+      const line = lines[i]?.trim() ?? '';
 
       // Skip empty lines and comments
-      if (!line || line.startsWith('<!--')) {
+      if (!line ?? line.startsWith('<!--')) {
         continue;
       }
 
@@ -82,7 +82,7 @@ export class ChangelogParser {
         if (description) {
           const change = this.parseChangeDescription(description);
 
-          const changes = currentEntry.sections.get(currentSection) || [];
+          const changes = currentEntry.sections.get(currentSection) ?? [];
           changes.push(change);
           currentEntry.sections.set(currentSection, changes);
         }
@@ -151,7 +151,7 @@ export class ChangelogParser {
     // Check section order
     const sectionOrder = ['Added', 'Changed', 'Deprecated', 'Removed', 'Fixed', 'Security'];
     const sections =
-      content.match(/###\s+(Added|Changed|Deprecated|Removed|Fixed|Security)/g) || [];
+      content.match(/###\s+(Added|Changed|Deprecated|Removed|Fixed|Security)/g) ?? [];
 
     let lastIndex = -1;
     for (const sectionMatch of sections) {
@@ -199,7 +199,7 @@ export class ChangelogParser {
    */
   getUnreleasedChanges(content: string): ChangelogEntry | null {
     const entries = this.parse(content);
-    return entries.find(entry => entry.version === 'Unreleased') || null;
+    return entries.find(entry => entry.version === 'Unreleased') ?? null;
   }
 
   /**
@@ -292,12 +292,12 @@ export class ChangelogParser {
       if (existing) {
         // Merge sections
         for (const [sectionType, changes] of entry.sections) {
-          const existingChanges = existing.sections.get(sectionType) || [];
+          const existingChanges = existing.sections.get(sectionType) ?? [];
           existing.sections.set(sectionType, [...existingChanges, ...changes]);
         }
 
         // Use the newer date if available
-        if (entry.date && (!existing.date || entry.date > existing.date)) {
+        if (entry.date && (!existing.date ?? entry.date > existing.date)) {
           existing.date = entry.date;
         }
       } else {

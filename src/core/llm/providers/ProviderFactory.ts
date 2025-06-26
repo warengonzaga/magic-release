@@ -26,7 +26,7 @@ export class ProviderFactory {
     switch (provider) {
       case 'openai': {
         const openaiConfig: any = {
-          apiKey: providerConfig.apiKey || '',
+          apiKey: providerConfig.apiKey ?? '',
         };
         if (providerConfig.model) openaiConfig.model = providerConfig.model;
         if (providerConfig.temperature !== undefined)
@@ -41,7 +41,7 @@ export class ProviderFactory {
 
       case 'anthropic': {
         const anthropicConfig: any = {
-          apiKey: providerConfig.apiKey || '',
+          apiKey: providerConfig.apiKey ?? '',
         };
         if (providerConfig.model) anthropicConfig.model = providerConfig.model;
         if (providerConfig.temperature !== undefined)
@@ -54,8 +54,8 @@ export class ProviderFactory {
 
       case 'azure': {
         const azureConfig: any = {
-          apiKey: providerConfig.apiKey || '',
-          endpoint: providerConfig.endpoint || '',
+          apiKey: providerConfig.apiKey ?? '',
+          endpoint: providerConfig.endpoint ?? '',
         };
         if (providerConfig.model) azureConfig.model = providerConfig.model;
         if (providerConfig.temperature !== undefined)

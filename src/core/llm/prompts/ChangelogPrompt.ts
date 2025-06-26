@@ -75,7 +75,7 @@ Do not include:
     let prompt = `Generate a changelog entry for the following commits:\n\n`;
 
     // Add project context if available
-    if (context.projectName || context.projectDescription) {
+    if (context.projectName ?? context.projectDescription) {
       prompt += `Project Context:\n`;
       if (context.projectName) {
         prompt += `- Name: ${context.projectName}\n`;

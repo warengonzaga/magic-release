@@ -49,7 +49,7 @@ export class KeepChangelogGenerator {
 
     if (newEntries.length === 0) {
       logger.info('No new versions to document');
-      return existingChangelog || this.generateHeader();
+      return existingChangelog ?? this.generateHeader();
     }
 
     // Merge with existing changelog
@@ -87,7 +87,7 @@ export class KeepChangelogGenerator {
    * Load existing changelog file
    */
   async loadExistingChangelog(workingDir: string): Promise<string | undefined> {
-    const filename = this.config.changelog?.filename || 'CHANGELOG.md';
+    const filename = this.config.changelog?.filename ?? 'CHANGELOG.md';
     const changelogPath = path.join(workingDir, filename);
 
     if (!existsSync(changelogPath)) {
@@ -312,7 +312,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    * Format date for changelog
    */
   private formatDate(date: Date): string {
-    return date.toISOString().split('T')[0]!; // YYYY-MM-DD
+    const isoDate = date.toISOString().split('T')[0];
+    return isoDate ?? '';
   }
 
   /**
@@ -331,8 +332,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    * Compare semantic versions (simplified)
    */
   private compareVersions(a: string, b: string): number {
-    const parseVersion = (version: string) => {
-      const parts = version.replace(/^v/, '').split('-')[0]?.split('.').map(Number) || [];
+    const parseVersion = (version: string): number[] => {
+      const parts = version.replace(/^v/, '').split('-')[0]?.split('.').map(Number) ?? [];
       return parts.concat([0, 0, 0]).slice(0, 3); // Ensure 3 parts
     };
 
@@ -340,8 +341,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     const versionB = parseVersion(b);
 
     for (let i = 0; i < 3; i++) {
-      const partA = versionA[i] || 0;
-      const partB = versionB[i] || 0;
+      const partA = versionA[i] ?? 0;
+      const partB = versionB[i] ?? 0;
       if (partA !== partB) {
         return partA - partB;
       }
@@ -354,7 +355,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    * Write changelog to file
    */
   async writeChangelog(content: string, workingDir: string): Promise<void> {
-    const filename = this.config.changelog?.filename || 'CHANGELOG.md';
+    const filename = this.config.changelog?.filename ?? 'CHANGELOG.md';
     const changelogPath = path.join(workingDir, filename);
 
     try {

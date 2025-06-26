@@ -47,7 +47,7 @@ export class OpenAIProvider extends BaseProvider implements ProviderValidator {
       ...config,
     });
 
-    this.baseURL = config.baseURL || 'https://api.openai.com/v1';
+    this.baseURL = config.baseURL ?? 'https://api.openai.com/v1';
     if (config.organization) {
       this.organization = config.organization;
     }
@@ -69,7 +69,7 @@ export class OpenAIProvider extends BaseProvider implements ProviderValidator {
     try {
       const response = await this.makeRequest(messages);
 
-      if (!response.choices || response.choices.length === 0) {
+      if (!response.choices ?? response.choices.length === 0) {
         throw new LLMError('No choices returned from OpenAI API');
       }
 
@@ -143,7 +143,7 @@ export class OpenAIProvider extends BaseProvider implements ProviderValidator {
       if (!response.ok) {
         const errorData = (await response.json().catch(() => ({}))) as any;
         throw new LLMError(
-          `OpenAI API error: ${response.status} - ${errorData.error?.message || response.statusText}`
+          `OpenAI API error: ${response.status} - ${errorData.error?.message ?? response.statusText}`
         );
       }
 
@@ -168,12 +168,12 @@ export class OpenAIProvider extends BaseProvider implements ProviderValidator {
     // - Project format: sk-proj-[variable length]
     // - Organization format: sk-org-[variable length]
 
-    if (!apiKey || typeof apiKey !== 'string') {
+    if (!apiKey ?? typeof apiKey !== 'string') {
       return { valid: false, message: 'API key is required' };
     }
 
     // Check if it starts with sk- and has reasonable length
-    if (!apiKey.startsWith('sk-') || apiKey.length < 50) {
+    if (!apiKey.startsWith('sk-') ?? apiKey.length < 50) {
       return { valid: false, message: 'Invalid OpenAI API key format' };
     }
 
@@ -197,11 +197,11 @@ export class OpenAIProvider extends BaseProvider implements ProviderValidator {
    * Validate API key format (legacy method for backward compatibility)
    */
   override validateApiKeySync(apiKey: string): boolean {
-    if (!apiKey || typeof apiKey !== 'string') {
+    if (!apiKey ?? typeof apiKey !== 'string') {
       return false;
     }
 
-    if (!apiKey.startsWith('sk-') || apiKey.length < 50) {
+    if (!apiKey.startsWith('sk-') ?? apiKey.length < 50) {
       return false;
     }
 
@@ -219,7 +219,7 @@ export class OpenAIProvider extends BaseProvider implements ProviderValidator {
    * Test connection to OpenAI API
    */
   async testConnection(key?: string): Promise<ValidationResult> {
-    const apiKey = key || this.config.apiKey;
+    const apiKey = key ?? this.config.apiKey;
     logger.debug('Testing OpenAI API connection');
 
     // First validate format
@@ -298,8 +298,8 @@ export class OpenAIProvider extends BaseProvider implements ProviderValidator {
       'gpt-3.5-turbo': { input: 0.0015 / 1000, output: 0.002 / 1000 },
     };
 
-    const modelName = this.config.model || 'gpt-4o-mini';
-    return costs[modelName] || costs['gpt-4o-mini']!;
+    const modelName = this.config.model ?? 'gpt-4o-mini';
+    return costs[modelName] ?? costs['gpt-4o-mini']!;
   }
 
   /**

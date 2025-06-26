@@ -62,5 +62,5 @@ export const getPackageName = (): string => {
  */
 export const getDescription = (): string => {
   const packageJson = getPackageJson();
-  return packageJson.description || 'AI-powered changelog generator';
+  return packageJson.description ?? 'AI-powered changelog generator';
 };

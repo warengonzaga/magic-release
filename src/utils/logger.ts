@@ -177,7 +177,7 @@ class Logger {
     if (!uiStateManager.isUIMode) return false;
 
     // Always allow critical errors and warnings through, even in UI mode
-    if (level === 'error' || level === 'warn') return false;
+    if (level === 'error' ?? level === 'warn') return false;
 
     // Suppress debug, info, and log during UI operations
     return true;

@@ -55,7 +55,7 @@ export class AnthropicProvider extends BaseProvider implements ProviderValidator
    * Validate API key format (sync method for backward compatibility)
    */
   override validateApiKeySync(apiKey: string): boolean {
-    if (!apiKey || typeof apiKey !== 'string') {
+    if (!apiKey ?? typeof apiKey !== 'string') {
       return false;
     }
     return AnthropicProvider.config?.apiKeyPattern.test(apiKey) ?? false;
@@ -73,11 +73,11 @@ export class AnthropicProvider extends BaseProvider implements ProviderValidator
     try {
       const response = await this.makeRequest(messages);
 
-      if (!response.content || response.content.length === 0) {
+      if (!response.content ?? response.content.length === 0) {
         throw new LLMError('No content returned from Anthropic API');
       }
 
-      const textContent = response.content.find(c => c.type === 'text')?.text || '';
+      const textContent = response.content.find(c => c.type === 'text')?.text ?? '';
 
       const result: LLMResponse = {
         content: textContent,
@@ -157,7 +157,7 @@ export class AnthropicProvider extends BaseProvider implements ProviderValidator
       if (!response.ok) {
         const errorData = (await response.json().catch(() => ({}))) as any;
         throw new LLMError(
-          `Anthropic API error: ${response.status} - ${errorData.error?.message || response.statusText}`
+          `Anthropic API error: ${response.status} - ${errorData.error?.message ?? response.statusText}`
         );
       }
 
@@ -197,7 +197,7 @@ export class AnthropicProvider extends BaseProvider implements ProviderValidator
    * Test connection to Anthropic API
    */
   async testConnection(key?: string): Promise<ValidationResult> {
-    const apiKey = key || this.config.apiKey;
+    const apiKey = key ?? this.config.apiKey;
     logger.debug('Testing Anthropic API connection');
 
     // First validate format
@@ -271,7 +271,7 @@ export class AnthropicProvider extends BaseProvider implements ProviderValidator
    */
   getAvailableModels(): string[] {
     return (
-      AnthropicProvider.config?.supportedModels || [
+      AnthropicProvider.config?.supportedModels ?? [
         'claude-3-haiku-20240307',
         'claude-3-sonnet-20240229',
         'claude-3-opus-20240229',

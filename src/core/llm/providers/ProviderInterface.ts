@@ -17,7 +17,7 @@ export interface ProviderConfig {
 export interface ValidationResult {
   valid: boolean;
   message: string;
-  details?: any;
+  details?: Record<string, unknown>;
 }
 
 export interface ProviderValidator {
