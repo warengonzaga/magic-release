@@ -134,11 +134,10 @@ export interface RepositoryAnalysis {
 export interface CLIFlags {
   // Provider management
   provider?: 'openai' | 'anthropic' | 'azure';
-  setApiKey?: string;
-  setApiKeyUnsafe?: string;
-  testApiKey?: string;
-  deleteApiKey?: boolean;
-  listProviders?: boolean;
+  setKey?: string;
+  setKeyUnsafe?: string;
+  testKey?: string;
+  deleteKey?: boolean;
   
   // Configuration
   config?: boolean;
@@ -147,6 +146,7 @@ export interface CLIFlags {
   
   // Execution
   verbose?: boolean;
+  debug?: boolean;
   dryRun?: boolean;
   from?: string;
   to?: string;

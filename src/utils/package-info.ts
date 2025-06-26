@@ -36,7 +36,7 @@ const getPackageJson = (): PackageJson => {
     return {
       name: 'magicr',
       version: '0.1.0-beta',
-      description: 'AI-powered changelog generator'
+      description: 'AI-powered changelog generator',
     };
   }
 };

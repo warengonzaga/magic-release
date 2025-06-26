@@ -46,17 +46,17 @@ export class ChangelogParser {
         // Start new entry
         const version = versionMatch[1];
         const dateStr = versionMatch[2];
-        
+
         if (!version) continue; // Skip if no version found
-        
+
         const parsedDate = dateStr ? this.parseDate(dateStr) : undefined;
-        
+
         currentEntry = {
           version,
           sections: new Map(),
-          ...(parsedDate && { date: parsedDate })
+          ...(parsedDate && { date: parsedDate }),
         };
-        
+
         currentSection = null;
         logger.debug(`Found version: ${version}`);
         continue;
@@ -66,11 +66,11 @@ export class ChangelogParser {
       const sectionMatch = line.match(/^###\s+(Added|Changed|Deprecated|Removed|Fixed|Security)/);
       if (sectionMatch && currentEntry) {
         currentSection = sectionMatch[1] as ChangeType;
-        
+
         if (!currentEntry.sections.has(currentSection)) {
           currentEntry.sections.set(currentSection, []);
         }
-        
+
         logger.debug(`Found section: ${currentSection}`);
         continue;
       }
@@ -81,12 +81,12 @@ export class ChangelogParser {
         const description = changeMatch[1];
         if (description) {
           const change = this.parseChangeDescription(description);
-          
+
           const changes = currentEntry.sections.get(currentSection) || [];
           changes.push(change);
           currentEntry.sections.set(currentSection, changes);
         }
-        
+
         continue;
       }
     }
@@ -150,17 +150,18 @@ export class ChangelogParser {
 
     // Check section order
     const sectionOrder = ['Added', 'Changed', 'Deprecated', 'Removed', 'Fixed', 'Security'];
-    const sections = content.match(/###\s+(Added|Changed|Deprecated|Removed|Fixed|Security)/g) || [];
-    
+    const sections =
+      content.match(/###\s+(Added|Changed|Deprecated|Removed|Fixed|Security)/g) || [];
+
     let lastIndex = -1;
     for (const sectionMatch of sections) {
       const section = sectionMatch.replace('### ', '');
       const currentIndex = sectionOrder.indexOf(section);
-      
+
       if (currentIndex !== -1 && currentIndex < lastIndex) {
         issues.push(`Section "${section}" is out of order`);
       }
-      
+
       if (currentIndex !== -1) {
         lastIndex = currentIndex;
       }
@@ -168,7 +169,7 @@ export class ChangelogParser {
 
     return {
       valid: issues.length === 0,
-      issues
+      issues,
     };
   }
 
@@ -178,11 +179,11 @@ export class ChangelogParser {
   getLatestVersion(content: string): string | null {
     const versionRegex = /##\s*\[([^\]]+)\]/;
     const match = content.match(versionRegex);
-    
+
     if (match?.[1] && match[1] !== 'Unreleased') {
       return match[1];
     }
-    
+
     return null;
   }
 
@@ -230,7 +231,7 @@ export class ChangelogParser {
       commits: [], // Will be populated elsewhere if needed
       ...(scope && { scope }),
       ...(pr && { pr }),
-      ...(issues.length > 0 && { issues })
+      ...(issues.length > 0 && { issues }),
     };
   }
 
@@ -249,10 +250,12 @@ export class ChangelogParser {
     const issueMatches = description.match(/\[#(\d+)\]/g);
     if (!issueMatches) return [];
 
-    return issueMatches.map(match => {
-      const numberMatch = match.match(/\d+/);
-      return numberMatch ? numberMatch[0] : '';
-    }).filter(Boolean);
+    return issueMatches
+      .map(match => {
+        const numberMatch = match.match(/\d+/);
+        return numberMatch ? numberMatch[0] : '';
+      })
+      .filter(Boolean);
   }
 
   /**
@@ -285,14 +288,14 @@ export class ChangelogParser {
 
     for (const entry of entries) {
       const existing = versionMap.get(entry.version);
-      
+
       if (existing) {
         // Merge sections
         for (const [sectionType, changes] of entry.sections) {
           const existingChanges = existing.sections.get(sectionType) || [];
           existing.sections.set(sectionType, [...existingChanges, ...changes]);
         }
-        
+
         // Use the newer date if available
         if (entry.date && (!existing.date || entry.date > existing.date)) {
           existing.date = entry.date;

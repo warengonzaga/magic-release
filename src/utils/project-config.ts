@@ -21,7 +21,7 @@ export interface ProjectConfig {
     maxTokens?: number;
     // Note: API keys should NOT be stored in project config files for security
   };
-  
+
   // Changelog Configuration
   changelog?: {
     filename?: string;
@@ -35,14 +35,14 @@ export interface ProjectConfig {
       pr?: string;
     };
   };
-  
+
   // Git Configuration
   git?: {
     tagPattern?: string;
     remote?: string;
     repository?: string;
   };
-  
+
   // Generation Rules
   rules?: {
     minCommitsForUpdate?: number;
@@ -95,12 +95,12 @@ export const CONFIG_FILENAMES = [
 export const findProjectConfig = (searchPath: string = cwd()): ProjectConfig | null => {
   for (const filename of CONFIG_FILENAMES) {
     const configPath = join(searchPath, filename);
-    
+
     if (existsSync(configPath)) {
       try {
         const content = readFileSync(configPath, 'utf-8');
         const config = JSON.parse(content) as ProjectConfig;
-        
+
         logger.debug(`Found project config at: ${configPath}`);
         return config;
       } catch (error: any) {
@@ -109,7 +109,7 @@ export const findProjectConfig = (searchPath: string = cwd()): ProjectConfig | n
       }
     }
   }
-  
+
   return null;
 };
 
@@ -119,18 +119,18 @@ export const findProjectConfig = (searchPath: string = cwd()): ProjectConfig | n
 export const findProjectConfigRecursive = (startPath: string = cwd()): ProjectConfig | null => {
   let currentPath = resolve(startPath);
   let parentPath = resolve(currentPath, '..');
-  
+
   // Search up the directory tree until we reach the root
   while (currentPath !== parentPath) {
     const config = findProjectConfig(currentPath);
     if (config) {
       return config;
     }
-    
+
     currentPath = parentPath;
     parentPath = resolve(currentPath, '..');
   }
-  
+
   // Check root directory as well
   return findProjectConfig(currentPath);
 };
@@ -142,7 +142,7 @@ export const mergeWithDefaults = (projectConfig: ProjectConfig | null): ProjectC
   if (!projectConfig) {
     return DEFAULT_PROJECT_CONFIG;
   }
-  
+
   return {
     llm: {
       ...DEFAULT_PROJECT_CONFIG.llm,
@@ -173,51 +173,63 @@ export const mergeWithDefaults = (projectConfig: ProjectConfig | null): ProjectC
 export const getProjectConfig = (searchPath?: string): ProjectConfig => {
   const projectConfig = findProjectConfigRecursive(searchPath);
   const mergedConfig = mergeWithDefaults(projectConfig);
-  
+
   if (projectConfig) {
     logger.debug('Using project-specific configuration');
   } else {
     logger.debug('Using default configuration (no .magicrrc found)');
   }
-  
+
   return mergedConfig;
 };
 
 /**
  * Validate project configuration
  */
-export const validateProjectConfig = (config: ProjectConfig): { valid: boolean; errors: string[] } => {
+export const validateProjectConfig = (
+  config: ProjectConfig
+): { valid: boolean; errors: string[] } => {
   const errors: string[] = [];
-  
+
   // Validate LLM provider
   if (config.llm?.provider && !['openai', 'anthropic', 'azure'].includes(config.llm.provider)) {
-    errors.push(`Invalid LLM provider: ${config.llm.provider}. Must be one of: openai, anthropic, azure`);
+    errors.push(
+      `Invalid LLM provider: ${config.llm.provider}. Must be one of: openai, anthropic, azure`
+    );
   }
-  
+
   // Validate temperature
-  if (config.llm?.temperature !== undefined && (config.llm.temperature < 0 || config.llm.temperature > 2)) {
+  if (
+    config.llm?.temperature !== undefined &&
+    (config.llm.temperature < 0 || config.llm.temperature > 2)
+  ) {
     errors.push(`Invalid temperature: ${config.llm.temperature}. Must be between 0 and 2`);
   }
-  
+
   // Validate maxTokens
-  if (config.llm?.maxTokens !== undefined && (config.llm.maxTokens < 1 || config.llm.maxTokens > 4096)) {
+  if (
+    config.llm?.maxTokens !== undefined &&
+    (config.llm.maxTokens < 1 || config.llm.maxTokens > 4096)
+  ) {
     errors.push(`Invalid maxTokens: ${config.llm.maxTokens}. Must be between 1 and 4096`);
   }
-  
+
   // Validate changelog filename
   if (config.changelog?.filename && !config.changelog.filename.endsWith('.md')) {
     errors.push(`Invalid changelog filename: ${config.changelog.filename}. Must end with .md`);
   }
-  
+
   // Validate tag pattern (basic regex validation)
   if (config.git?.tagPattern) {
     try {
       new RegExp(config.git.tagPattern);
     } catch {
-      errors.push(`Invalid tag pattern: ${config.git.tagPattern}. Must be a valid regular expression`);
+      errors.push(
+        `Invalid tag pattern: ${config.git.tagPattern}. Must be a valid regular expression`
+      );
     }
   }
-  
+
   return {
     valid: errors.length === 0,
     errors,
@@ -258,6 +270,6 @@ export const generateSampleConfig = (): string => {
       groupUnreleasedCommits: true,
     },
   };
-  
+
   return JSON.stringify(sampleConfig, null, 2);
 };

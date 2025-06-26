@@ -3,12 +3,13 @@
  * Implements Azure OpenAI API integration
  */
 
+import { createInvalidAPIKeyError, LLMError } from '../../../utils/errors.js';
+import { logger } from '../../../utils/logger.js';
+
 import type { LLMMessage, LLMResponse, LLMConfig } from './BaseProvider.js';
 import BaseProvider from './BaseProvider.js';
 import type { ProviderValidator, ValidationResult } from './ProviderInterface.js';
 import { PROVIDER_CONFIGS } from './ProviderInterface.js';
-import { createInvalidAPIKeyError, LLMError } from '../../../utils/errors.js';
-import { logger } from '../../../utils/logger.js';
 
 export interface AzureConfig extends LLMConfig {
   endpoint: string;
@@ -45,7 +46,7 @@ export class AzureProvider extends BaseProvider implements ProviderValidator {
   constructor(config: AzureConfig) {
     super({
       model: 'gpt-4o-mini', // Default model
-      ...config
+      ...config,
     });
 
     this.endpoint = config.endpoint || process.env['AZURE_OPENAI_ENDPOINT'] || '';
@@ -53,7 +54,9 @@ export class AzureProvider extends BaseProvider implements ProviderValidator {
     this.deploymentName = config.deploymentName;
 
     if (!this.endpoint) {
-      throw new LLMError('Azure endpoint is required. Set AZURE_OPENAI_ENDPOINT or provide endpoint in config.');
+      throw new LLMError(
+        'Azure endpoint is required. Set AZURE_OPENAI_ENDPOINT or provide endpoint in config.'
+      );
     }
 
     if (!this.validateApiKeySync(config.apiKey)) {
@@ -82,7 +85,7 @@ export class AzureProvider extends BaseProvider implements ProviderValidator {
 
     try {
       const response = await this.makeRequest(messages);
-      
+
       if (!response.choices || response.choices.length === 0) {
         throw new LLMError('No choices returned from Azure OpenAI API');
       }
@@ -97,10 +100,10 @@ export class AzureProvider extends BaseProvider implements ProviderValidator {
         usage: {
           promptTokens: response.usage.prompt_tokens,
           completionTokens: response.usage.completion_tokens,
-          totalTokens: response.usage.total_tokens
+          totalTokens: response.usage.total_tokens,
         },
         model: response.model,
-        finishReason: choice.finish_reason
+        finishReason: choice.finish_reason,
       };
 
       logger.debug(`Azure OpenAI response: ${result.content.substring(0, 200)}...`);
@@ -124,7 +127,7 @@ export class AzureProvider extends BaseProvider implements ProviderValidator {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'api-key': this.config.apiKey,
-      'User-Agent': 'MagicRelease/1.0.0'
+      'User-Agent': 'MagicRelease/1.0.0',
     };
 
     // Use deployment name if provided, otherwise use model name
@@ -134,10 +137,10 @@ export class AzureProvider extends BaseProvider implements ProviderValidator {
     const body = {
       messages: messages.map(msg => ({
         role: msg.role,
-        content: msg.content
+        content: msg.content,
       })),
       temperature: this.config.temperature,
-      max_tokens: this.config.maxTokens
+      max_tokens: this.config.maxTokens,
     };
 
     const controller = new AbortController();
@@ -148,26 +151,26 @@ export class AzureProvider extends BaseProvider implements ProviderValidator {
         method: 'POST',
         headers,
         body: JSON.stringify(body),
-        signal: controller.signal
+        signal: controller.signal,
       });
 
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({})) as any;
+        const errorData = (await response.json().catch(() => ({}))) as any;
         throw new LLMError(
           `Azure OpenAI API error: ${response.status} - ${errorData.error?.message || response.statusText}`
         );
       }
 
-      return await response.json() as AzureResponse;
+      return (await response.json()) as AzureResponse;
     } catch (error) {
       clearTimeout(timeoutId);
-      
+
       if ((error as Error).name === 'AbortError') {
         throw new LLMError('Azure OpenAI API request timed out');
       }
-      
+
       throw error;
     }
   }
@@ -180,15 +183,15 @@ export class AzureProvider extends BaseProvider implements ProviderValidator {
 
     // Azure keys are typically 32+ character strings
     if (!AzureProvider.config?.apiKeyPattern.test(key)) {
-      return { 
-        valid: false, 
-        message: 'Invalid Azure API key format. Expected: 32+ alphanumeric characters' 
+      return {
+        valid: false,
+        message: 'Invalid Azure API key format. Expected: 32+ alphanumeric characters',
       };
     }
 
-    return { 
-      valid: true, 
-      message: 'API key format is valid' 
+    return {
+      valid: true,
+      message: 'API key format is valid',
     };
   }
 
@@ -208,7 +211,7 @@ export class AzureProvider extends BaseProvider implements ProviderValidator {
     if (!this.endpoint) {
       return {
         valid: false,
-        message: '❌ Azure endpoint is required but not configured'
+        message: '❌ Azure endpoint is required but not configured',
       };
     }
 
@@ -221,43 +224,43 @@ export class AzureProvider extends BaseProvider implements ProviderValidator {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'api-key': apiKey
+          'api-key': apiKey,
         },
         body: JSON.stringify({
           messages: [{ role: 'user', content: 'Hi' }],
-          max_tokens: 10
-        })
+          max_tokens: 10,
+        }),
       });
 
       if (response.status === 200) {
         logger.info('Azure OpenAI API key validation successful');
-        return { 
-          valid: true, 
-          message: '✅ Azure OpenAI API key is valid and working!' 
+        return {
+          valid: true,
+          message: '✅ Azure OpenAI API key is valid and working!',
         };
       } else if (response.status === 401) {
         logger.warn('Azure OpenAI API key validation failed - unauthorized');
-        return { 
-          valid: false, 
-          message: '❌ Invalid Azure OpenAI API key - unauthorized' 
+        return {
+          valid: false,
+          message: '❌ Invalid Azure OpenAI API key - unauthorized',
         };
       } else if (response.status === 404) {
         return {
           valid: false,
-          message: '❌ Deployment not found. Check your model/deployment name and endpoint.'
+          message: '❌ Deployment not found. Check your model/deployment name and endpoint.',
         };
       } else {
         logger.warn(`Azure OpenAI API returned status ${response.status}`);
-        return { 
-          valid: true, 
-          message: '⚠️ API key appears valid (non-auth error occurred)' 
+        return {
+          valid: true,
+          message: '⚠️ API key appears valid (non-auth error occurred)',
         };
       }
     } catch (error) {
       logger.error('Azure OpenAI API connection test failed', error);
-      return { 
-        valid: false, 
-        message: `🌐 Network error: ${(error as Error).message}` 
+      return {
+        valid: false,
+        message: `🌐 Network error: ${(error as Error).message}`,
       };
     }
   }
@@ -280,12 +283,14 @@ export class AzureProvider extends BaseProvider implements ProviderValidator {
    * Get available models
    */
   getAvailableModels(): string[] {
-    return AzureProvider.config?.supportedModels || [
-      'gpt-4',
-      'gpt-4-turbo',
-      'gpt-35-turbo',
-      'gpt-4o-mini'
-    ];
+    return (
+      AzureProvider.config?.supportedModels || [
+        'gpt-4',
+        'gpt-4-turbo',
+        'gpt-35-turbo',
+        'gpt-4o-mini',
+      ]
+    );
   }
 }
 

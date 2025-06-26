@@ -12,7 +12,7 @@ export class MagicReleaseError extends Error {
     this.name = 'MagicReleaseError';
     this.code = code;
     this.context = context;
-    
+
     // Maintains proper stack trace for where our error was thrown (only available on V8)
     if ('captureStackTrace' in Error) {
       (Error as any).captureStackTrace(this, MagicReleaseError);
@@ -103,34 +103,33 @@ export const createGitNotInstalledError = (): GitError => {
 };
 
 export const createNotGitRepositoryError = (path?: string): GitError => {
-  return new GitError(
-    `The current directory${path ? ` (${path})` : ''} is not a Git repository.`,
-    { 
-      path,
-      solution: 'Initialize a Git repository with "git init" or run this command in a Git repository.' 
-    }
-  );
+  return new GitError(`The current directory${path ? ` (${path})` : ''} is not a Git repository.`, {
+    path,
+    solution:
+      'Initialize a Git repository with "git init" or run this command in a Git repository.',
+  });
 };
 
 export const createCommitterNotConfiguredError = (): GitError => {
-  return new GitError(
-    'Git user name and email are not configured.',
-    { 
-      solution: 'Configure Git with "git config --global user.name" and "git config --global user.email"'
-    }
-  );
+  return new GitError('Git user name and email are not configured.', {
+    solution:
+      'Configure Git with "git config --global user.name" and "git config --global user.email"',
+  });
 };
 
 export const createInvalidAPIKeyError = (provider: string): APIKeyError => {
   return new APIKeyError(
     `Invalid API key for ${provider}. Please check your API key and try again.`,
-    { provider, solution: `Get a valid API key from ${provider} and configure it using the config command.` }
+    {
+      provider,
+      solution: `Get a valid API key from ${provider} and configure it using the config command.`,
+    }
   );
 };
 
 export const createMissingAPIKeyError = (provider: string): APIKeyError => {
-  return new APIKeyError(
-    `No API key configured for ${provider}.`,
-    { provider, solution: 'Configure your API key using the config command.' }
-  );
+  return new APIKeyError(`No API key configured for ${provider}.`, {
+    provider,
+    solution: 'Configure your API key using the config command.',
+  });
 };

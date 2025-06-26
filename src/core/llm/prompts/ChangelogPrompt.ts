@@ -95,25 +95,25 @@ Do not include:
     prompt += `Commits to analyze:\n`;
     for (const commit of context.commits) {
       prompt += `- ${commit.message}`;
-      
+
       if (commit.hash) {
         prompt += ` (${commit.hash.substring(0, 7)})`;
       }
-      
+
       if (commit.author) {
         prompt += ` by ${commit.author}`;
       }
-      
+
       if (commit.pr) {
         prompt += ` [PR #${commit.pr}]`;
       }
-      
+
       if (commit.issues?.length) {
         prompt += ` [Issues: ${commit.issues.map((i: string) => `#${i}`).join(', ')}]`;
       }
-      
+
       prompt += `\n`;
-      
+
       // Add body if available and meaningful
       if (commit.body && commit.body.length > 20) {
         const body = commit.body.substring(0, 200);
@@ -183,7 +183,7 @@ Return only the summary text, no additional formatting.`;
    */
   getVersionSuggestionPrompt(changes: string[], currentVersion?: string): string {
     const changesText = changes.join('\n- ');
-    
+
     let prompt = `Based on these changes, suggest the next version number following Semantic Versioning (semver.org):
 
 Changes:
@@ -230,25 +230,27 @@ Only include categories that have changes. Make descriptions user-friendly and f
    * Format commits for prompt inclusion
    */
   private formatCommitsForPrompt(commits: Commit[]): string {
-    return commits.map(commit => {
-      let line = `- ${commit.message}`;
-      
-      if (commit.type && commit.scope) {
-        line += ` [Type: ${commit.type}, Scope: ${commit.scope}]`;
-      } else if (commit.type) {
-        line += ` [Type: ${commit.type}]`;
-      }
-      
-      if (commit.breaking) {
-        line += ` [BREAKING CHANGE]`;
-      }
-      
-      if (commit.hash) {
-        line += ` (${commit.hash.substring(0, 7)})`;
-      }
-      
-      return line;
-    }).join('\n');
+    return commits
+      .map(commit => {
+        let line = `- ${commit.message}`;
+
+        if (commit.type && commit.scope) {
+          line += ` [Type: ${commit.type}, Scope: ${commit.scope}]`;
+        } else if (commit.type) {
+          line += ` [Type: ${commit.type}]`;
+        }
+
+        if (commit.breaking) {
+          line += ` [BREAKING CHANGE]`;
+        }
+
+        if (commit.hash) {
+          line += ` (${commit.hash.substring(0, 7)})`;
+        }
+
+        return line;
+      })
+      .join('\n');
   }
 
   /**

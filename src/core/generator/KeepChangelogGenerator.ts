@@ -5,12 +5,8 @@
 
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import path from 'path';
-import type { 
-  ChangelogEntry, 
-  Change, 
-  ChangeType, 
-  MagicReleaseConfig 
-} from '../../types/index.js';
+
+import type { ChangelogEntry, Change, ChangeType, MagicReleaseConfig } from '../../types/index.js';
 import { ChangelogError } from '../../utils/errors.js';
 import { logger } from '../../utils/logger.js';
 
@@ -32,7 +28,7 @@ export class KeepChangelogGenerator {
       includePRLinks: config.changelog?.includePRLinks ?? true,
       includeCommitLinks: config.changelog?.includeCommitLinks ?? true,
       includeIssueLinks: config.changelog?.includeIssueLinks ?? true,
-      ...options
+      ...options,
     };
   }
 
@@ -42,15 +38,15 @@ export class KeepChangelogGenerator {
   async generate(entries: ChangelogEntry[], workingDir: string): Promise<string> {
     logger.debug('Generating Keep a Changelog format', {
       entriesCount: entries.length,
-      includeLinks: this.options
+      includeLinks: this.options,
     });
 
     const existingChangelog = await this.loadExistingChangelog(workingDir);
     const documentedVersions = this.extractDocumentedVersions(existingChangelog);
-    
+
     // Filter out already documented versions
     const newEntries = entries.filter(entry => !documentedVersions.has(entry.version));
-    
+
     if (newEntries.length === 0) {
       logger.info('No new versions to document');
       return existingChangelog || this.generateHeader();
@@ -58,10 +54,10 @@ export class KeepChangelogGenerator {
 
     // Merge with existing changelog
     const mergedEntries = this.mergeEntries(existingChangelog, newEntries);
-    
+
     // Generate full changelog content
     let content = this.generateHeader();
-    
+
     // Add unreleased section if needed
     const unreleasedEntry = mergedEntries.find(entry => entry.version === 'Unreleased');
     if (unreleasedEntry && this.hasChanges(unreleasedEntry)) {
@@ -113,7 +109,7 @@ export class KeepChangelogGenerator {
    */
   extractDocumentedVersions(changelog?: string): Set<string> {
     const versions = new Set<string>();
-    
+
     if (!changelog) {
       return versions;
     }
@@ -135,7 +131,10 @@ export class KeepChangelogGenerator {
   /**
    * Merge new entries with existing changelog structure
    */
-  private mergeEntries(existingChangelog: string | undefined, newEntries: ChangelogEntry[]): ChangelogEntry[] {
+  private mergeEntries(
+    existingChangelog: string | undefined,
+    newEntries: ChangelogEntry[]
+  ): ChangelogEntry[] {
     // If no existing changelog, return new entries as-is
     if (!existingChangelog) {
       return newEntries;
@@ -188,17 +187,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     }
 
     // Sort sections in Keep a Changelog order
-    const sectionOrder: ChangeType[] = ['Added', 'Changed', 'Deprecated', 'Removed', 'Fixed', 'Security'];
-    
+    const sectionOrder: ChangeType[] = [
+      'Added',
+      'Changed',
+      'Deprecated',
+      'Removed',
+      'Fixed',
+      'Security',
+    ];
+
     for (const sectionType of sectionOrder) {
       const changes = entry.sections.get(sectionType);
       if (changes && changes.length > 0) {
         content += `### ${sectionType}\n\n`;
-        
+
         for (const change of changes) {
           content += this.formatChange(change);
         }
-        
+
         content += '\n';
       }
     }
@@ -240,7 +246,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
       line += ` (${links.join(', ')})`;
     }
 
-    return line + '\n';
+    return `${line}\n`;
   }
 
   /**
@@ -257,7 +263,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     }
 
     let links = '\n<!-- Compare Links -->\n';
-    
+
     // Unreleased link
     const latestVersion = entries[0]?.version;
     if (latestVersion) {

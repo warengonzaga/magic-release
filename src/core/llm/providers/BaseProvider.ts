@@ -37,7 +37,7 @@ export abstract class BaseProvider {
       temperature: 0.1, // Low temperature for consistent output
       maxTokens: 2000,
       timeout: 30000, // 30 seconds
-      ...config
+      ...config,
     };
   }
 
@@ -85,9 +85,7 @@ export abstract class BaseProvider {
    * Format messages for logging (without sensitive content)
    */
   protected formatMessagesForLog(messages: LLMMessage[]): string {
-    return messages
-      .map(msg => `${msg.role}: ${msg.content.substring(0, 100)}...`)
-      .join('\n');
+    return messages.map(msg => `${msg.role}: ${msg.content.substring(0, 100)}...`).join('\n');
   }
 
   /**

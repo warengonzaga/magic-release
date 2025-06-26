@@ -7,6 +7,7 @@ import Conf from 'conf';
 
 import type { MagicReleaseConfig } from '../types/index.js';
 import type { ProviderType } from '../core/llm/providers/ProviderInterface.js';
+
 import { ConfigError, createInvalidAPIKeyError, createMissingAPIKeyError } from './errors.js';
 import { getProjectConfig } from './project-config.js';
 
@@ -51,7 +52,7 @@ export const isValidOpenAIKey = async (apiKey: string): Promise<boolean> => {
       /^sk-[a-zA-Z0-9]{48}$/, // Legacy format
       /^sk-proj-[a-zA-Z0-9\-_]{40,}$/, // Project format
       /^sk-org-[a-zA-Z0-9\-_]{40,}$/, // Organization format
-      /^sk-[a-zA-Z0-9\-_]{48,}$/ // Generic fallback for future formats
+      /^sk-[a-zA-Z0-9\-_]{48,}$/, // Generic fallback for future formats
     ];
 
     const hasValidFormat = validPatterns.some(pattern => pattern.test(apiKey));
@@ -66,10 +67,10 @@ export const isValidOpenAIKey = async (apiKey: string): Promise<boolean> => {
     try {
       const response = await fetch('https://api.openai.com/v1/models', {
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'User-Agent': 'MagicRelease/0.1.0'
+          Authorization: `Bearer ${apiKey}`,
+          'User-Agent': 'MagicRelease/0.1.0',
         },
-        signal: controller.signal
+        signal: controller.signal,
       });
 
       clearTimeout(timeoutId);
@@ -84,19 +85,24 @@ export const isValidOpenAIKey = async (apiKey: string): Promise<boolean> => {
         // If we hit rate limits, the key is likely valid
         return true;
       } else {
-        console.warn(`API validation returned status ${response.status}, assuming key is valid due to network/service issues`);
+        console.warn(
+          `API validation returned status ${response.status}, assuming key is valid due to network/service issues`
+        );
         // For other status codes, assume key is valid to avoid blocking users
         return true;
       }
     } catch (fetchError: any) {
       clearTimeout(timeoutId);
-      
+
       if (fetchError.name === 'AbortError') {
         console.warn('API key validation timed out, assuming key is valid');
         return true; // Timeout - assume valid to not block user
       }
-      
-      console.warn('Network error during API key validation, assuming key is valid:', fetchError.message);
+
+      console.warn(
+        'Network error during API key validation, assuming key is valid:',
+        fetchError.message
+      );
       return true; // Network errors - assume valid to not block user
     }
   } catch (error) {
@@ -169,10 +175,17 @@ export const getCurrentProvider = (): string | undefined => {
 };
 
 /**
- * Set current provider
+ * Set current provider with validation
  */
 export const setCurrentProvider = (provider: ProviderType): void => {
+  // Check if the provider has a saved key
+  const apiKey = config.get(provider);
+  if (!apiKey) {
+    throw createMissingAPIKeyError(provider);
+  }
+  
   config.set('provider', provider);
+  console.log(`✅ Switched to ${provider} provider`);
 };
 
 /**
@@ -185,18 +198,18 @@ export const setProviderApiKey = async (
 ): Promise<void> => {
   if (!skipValidation) {
     console.log(`🔍 Validating ${provider} API key...`);
-    
+
     // Use the provider-specific validation
     const isValid = await validateProviderApiKey(provider, key);
     if (!isValid.valid) {
       throw createInvalidAPIKeyError(provider);
     }
-    
+
     console.log(`✅ ${provider} API key is valid and saved`);
   } else {
     console.log(`⚠️ ${provider} API key saved without validation`);
   }
-  
+
   config.set(provider, key);
   config.set('provider', provider);
 };
@@ -231,23 +244,26 @@ export const deleteProviderApiKey = (provider: ProviderType): void => {
 /**
  * Validate API key for any provider
  */
-async function validateProviderApiKey(provider: ProviderType, key: string): Promise<{ valid: boolean; message: string }> {
+async function validateProviderApiKey(
+  provider: ProviderType,
+  key: string
+): Promise<{ valid: boolean; message: string }> {
   // Use the provider factory to create a provider and test the connection
   try {
     const { ProviderFactory } = await import('../core/llm/ProviderFactory.js');
-    
+
     // Create a basic config for validation
     const testProvider = ProviderFactory.createProviderFromConfig(provider, key);
     const result = await testProvider.testConnection(key);
-    
+
     return {
       valid: result.valid,
-      message: result.message
+      message: result.message,
     };
   } catch (error) {
     return {
       valid: false,
-      message: `Validation failed: ${(error as Error).message}`
+      message: `Validation failed: ${(error as Error).message}`,
     };
   }
 }
@@ -257,13 +273,13 @@ async function validateProviderApiKey(provider: ProviderType, key: string): Prom
  */
 export const getCurrentAPIKey = (): string => {
   const provider = getCurrentProvider();
-  
+
   if (!provider) {
     throw new ConfigError('No provider configured. Run magicr config to set up your API key.');
   }
 
   const apiKey = config.get(provider) as string;
-  
+
   if (!apiKey) {
     throw createMissingAPIKeyError(provider);
   }
@@ -277,7 +293,7 @@ export const getCurrentAPIKey = (): string => {
 export const hasValidConfig = (): boolean => {
   const provider = getCurrentProvider();
   if (!provider) return false;
-  
+
   const apiKey = config.get(provider);
   return Boolean(apiKey);
 };
@@ -287,6 +303,20 @@ export const hasValidConfig = (): boolean => {
  */
 export const getAllConfig = (): StoredConfig => {
   return config.store;
+};
+
+/**
+ * List all providers and their key status
+ */
+export const listAllProviders = (): { provider: ProviderType; hasKey: boolean; isCurrent: boolean }[] => {
+  const currentProvider = getCurrentProvider();
+  const providers: ProviderType[] = ['openai', 'anthropic', 'azure'];
+  
+  return providers.map(provider => ({
+    provider,
+    hasKey: Boolean(config.get(provider)),
+    isCurrent: provider === currentProvider
+  }));
 };
 
 /**
@@ -403,7 +433,7 @@ export const getConfigPath = (): string => {
  */
 export const validateConfig = (): { isValid: boolean; errors: string[] } => {
   const errors: string[] = [];
-  
+
   const provider = getCurrentProvider();
   if (provider) {
     const apiKey = config.get(provider);
@@ -426,7 +456,7 @@ export const validateConfig = (): { isValid: boolean; errors: string[] } => {
 
   return {
     isValid: errors.length === 0,
-    errors
+    errors,
   };
 };
 
@@ -435,11 +465,11 @@ export const validateConfig = (): { isValid: boolean; errors: string[] } => {
  * Merges global user config (API keys) with project-level config (.magicrrc)
  */
 export const getConfig = (): MagicReleaseConfig => {
-  const provider = getCurrentProvider() as ProviderType || 'openai';
-  
+  const provider = (getCurrentProvider() as ProviderType) || 'openai';
+
   // Get project-level configuration from .magicrrc file
   const projectConfig = getProjectConfig();
-  
+
   // Get API key safely (might be undefined)
   let apiKey: string | undefined;
   try {
@@ -478,16 +508,16 @@ export const getConfig = (): MagicReleaseConfig => {
     const endpoint = getAzureEndpoint();
     const apiVersion = getAzureApiVersion();
     const deploymentName = getAzureDeploymentName();
-    
+
     if (endpoint) config.llm.endpoint = endpoint;
     if (apiVersion) config.llm.apiVersion = apiVersion;
     if (deploymentName) config.llm.deploymentName = deploymentName;
   }
-  
+
   if (provider === 'openai' || config.llm.provider === 'openai') {
     const baseURL = getOpenAIBaseURL();
     const organization = getOpenAIOrganization();
-    
+
     if (baseURL) config.llm.baseURL = baseURL;
     if (organization) config.llm.organization = organization;
   }
@@ -545,32 +575,35 @@ export const getConfig = (): MagicReleaseConfig => {
     if (!config.rules) config.rules = {};
     config.rules.groupUnreleasedCommits = projectConfig.rules?.groupUnreleasedCommits ?? true;
   }
-  
+
   return config;
 };
 
 /**
  * Test API key connectivity without setting it
  */
-export const testAPIKey = async (apiKey: string): Promise<{ valid: boolean; message: string; details?: any }> => {
+export const testAPIKey = async (
+  apiKey: string
+): Promise<{ valid: boolean; message: string; details?: any }> => {
   try {
     // Basic format validation first
     if (!apiKey || typeof apiKey !== 'string') {
       return {
         valid: false,
-        message: 'Invalid API key format. API key must be a non-empty string.'
+        message: 'Invalid API key format. API key must be a non-empty string.',
       };
     }
 
     if (!apiKey.startsWith('sk-') || apiKey.length < 50) {
       return {
         valid: false,
-        message: 'Invalid API key format. OpenAI keys should start with "sk-" and be at least 50 characters long.'
+        message:
+          'Invalid API key format. OpenAI keys should start with "sk-" and be at least 50 characters long.',
       };
     }
 
     console.log('🔍 Testing API key connectivity...');
-    
+
     // Test with a simple API call
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout for testing
@@ -578,16 +611,16 @@ export const testAPIKey = async (apiKey: string): Promise<{ valid: boolean; mess
     try {
       const response = await fetch('https://api.openai.com/v1/models', {
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'User-Agent': 'MagicRelease/0.1.0'
+          Authorization: `Bearer ${apiKey}`,
+          'User-Agent': 'MagicRelease/0.1.0',
         },
-        signal: controller.signal
+        signal: controller.signal,
       });
 
       clearTimeout(timeoutId);
 
       if (response.status === 200) {
-        const data = await response.json() as { data?: any[] };
+        const data = (await response.json()) as { data?: any[] };
         const modelCount = data.data?.length || 0;
         return {
           valid: true,
@@ -595,57 +628,85 @@ export const testAPIKey = async (apiKey: string): Promise<{ valid: boolean; mess
           details: {
             status: response.status,
             modelCount,
-            timestamp: new Date().toISOString()
-          }
+            timestamp: new Date().toISOString(),
+          },
         };
       } else if (response.status === 401) {
         return {
           valid: false,
           message: '❌ API key is invalid. Please check your key and try again.',
-          details: { status: response.status }
+          details: { status: response.status },
         };
       } else if (response.status === 429) {
         return {
           valid: true,
           message: '⚠️ API key is valid but rate limited. Try again in a moment.',
-          details: { status: response.status }
+          details: { status: response.status },
         };
       } else if (response.status === 403) {
         return {
           valid: false,
-          message: '❌ API key is valid but access is forbidden. Check your OpenAI account permissions.',
-          details: { status: response.status }
+          message:
+            '❌ API key is valid but access is forbidden. Check your OpenAI account permissions.',
+          details: { status: response.status },
         };
       } else {
         const errorText = await response.text().catch(() => 'Unknown error');
         return {
           valid: false,
           message: `⚠️ Unexpected response from OpenAI API (${response.status}). The key might be valid but there's a service issue.`,
-          details: { status: response.status, error: errorText }
+          details: { status: response.status, error: errorText },
         };
       }
     } catch (fetchError: any) {
       clearTimeout(timeoutId);
-      
+
       if (fetchError.name === 'AbortError') {
         return {
           valid: false,
           message: '⏱️ API test timed out. Check your internet connection or try again.',
-          details: { error: 'Timeout after 15 seconds' }
+          details: { error: 'Timeout after 15 seconds' },
         };
       }
-      
+
       return {
         valid: false,
         message: `🌐 Network error: ${fetchError.message}. Check your internet connection.`,
-        details: { error: fetchError.message }
+        details: { error: fetchError.message },
       };
     }
   } catch (error: any) {
     return {
       valid: false,
       message: `❌ Unexpected error: ${error.message}`,
-      details: { error: error.message }
+      details: { error: error.message },
     };
   }
+};
+
+/**
+ * Auto-detect provider from API key format
+ */
+export const detectProviderFromKey = (apiKey: string): ProviderType | null => {
+  if (!apiKey || typeof apiKey !== 'string') {
+    return null;
+  }
+
+  // Anthropic keys start with 'sk-ant-' (check this first before OpenAI)
+  if (apiKey.startsWith('sk-ant-')) {
+    return 'anthropic';
+  }
+
+  // OpenAI keys start with 'sk-' but not 'sk-ant-'
+  if (apiKey.startsWith('sk-') && !apiKey.startsWith('sk-ant-')) {
+    return 'openai';
+  }
+
+  // Azure keys are typically UUIDs or custom formats
+  // For now, if it's not OpenAI or Anthropic, assume Azure
+  if (apiKey.length >= 32) {
+    return 'azure';
+  }
+
+  return null;
 };

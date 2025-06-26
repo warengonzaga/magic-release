@@ -36,13 +36,13 @@ export class GitService {
     try {
       const fullCommand = `git ${command}`;
       logger.debug(`Executing: ${fullCommand}`);
-      
+
       const result = execSync(fullCommand, {
         cwd: this.cwd,
         encoding: 'utf8',
-        stdio: ['ignore', 'pipe', 'pipe']
+        stdio: ['ignore', 'pipe', 'pipe'],
       });
-      
+
       return result.trim();
     } catch (error: any) {
       logger.error(`Git command failed: git ${command}`, error);
@@ -55,7 +55,7 @@ export class GitService {
    */
   public getCommitsBetween(from?: string, to: string = 'HEAD'): GitCommit[] {
     let range = '';
-    
+
     if (from) {
       range = `${from}..${to}`;
     } else {
@@ -66,10 +66,10 @@ export class GitService {
     // Use double quotes to properly escape the format string on Windows
     const formatStr = '--pretty=format:"%H|%s|%b|%an|%ae|%ad|%cn|%ce|%cd"';
     const command = `log ${range} ${formatStr} --date=iso`;
-    
+
     try {
       const output = this.execGit(command);
-      
+
       if (!output) {
         return [];
       }
@@ -90,15 +90,25 @@ export class GitService {
   private parseCommits(output: string): GitCommit[] {
     const commits: GitCommit[] = [];
     const lines = output.split('\n');
-    
+
     for (const line of lines) {
       if (!line.trim()) continue;
-      
+
       const parts = line.split('|');
       if (parts.length < 9) continue;
-      
-      const [hash, subject, body, authorName, authorEmail, authorDate, committerName, committerEmail, committerDate] = parts;
-      
+
+      const [
+        hash,
+        subject,
+        body,
+        authorName,
+        authorEmail,
+        authorDate,
+        committerName,
+        committerEmail,
+        committerDate,
+      ] = parts;
+
       commits.push({
         hash: hash?.trim() || '',
         subject: subject?.trim() || '',
@@ -106,16 +116,16 @@ export class GitService {
         author: {
           name: authorName?.trim() || '',
           email: authorEmail?.trim() || '',
-          date: new Date(authorDate?.trim() || Date.now())
+          date: new Date(authorDate?.trim() || Date.now()),
         },
         committer: {
           name: committerName?.trim() || '',
           email: committerEmail?.trim() || '',
-          date: new Date(committerDate?.trim() || Date.now())
-        }
+          date: new Date(committerDate?.trim() || Date.now()),
+        },
       });
     }
-    
+
     return commits;
   }
 
@@ -124,9 +134,10 @@ export class GitService {
    */
   public getAllTags(): GitTag[] {
     try {
-      const command = 'tag -l --sort=-version:refname --format="%(refname:short)|%(creatordate:iso)|%(subject)"';
+      const command =
+        'tag -l --sort=-version:refname --format="%(refname:short)|%(creatordate:iso)|%(subject)"';
       const output = this.execGit(command);
-      
+
       if (!output) {
         return [];
       }
@@ -144,22 +155,22 @@ export class GitService {
   private parseTags(output: string): GitTag[] {
     const tags: GitTag[] = [];
     const lines = output.split('\n');
-    
+
     for (const line of lines) {
       if (!line.trim()) continue;
-      
+
       const parts = line.split('|');
       if (parts.length < 3) continue;
-      
+
       const [name, date, subject] = parts;
-      
+
       tags.push({
         name: name?.trim() || '',
         date: new Date(date?.trim() || Date.now()),
-        subject: subject?.trim() || ''
+        subject: subject?.trim() || '',
       });
     }
-    
+
     return tags;
   }
 

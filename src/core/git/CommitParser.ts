@@ -18,7 +18,8 @@ export interface CommitParseResult {
 }
 
 export class CommitParser {
-  private conventionalCommitRegex = /^(?<type>\w+)(?:\((?<scope>[\w\-\.\/]+)\))?\!?:\s+(?<description>.+)/;
+  private conventionalCommitRegex =
+    /^(?<type>\w+)(?:\((?<scope>[\w\-\.\/]+)\))?\!?:\s+(?<description>.+)/;
   private breakingChangeRegex = /BREAKING CHANGE[S]?:|!:/;
   private issueRegex = /#(\d+)/g;
   private prRegex = /\(#(\d+)\)|\s#(\d+)|PR\s#(\d+)|Pull Request\s#(\d+)/gi;
@@ -32,17 +33,17 @@ export class CommitParser {
       body: commit.body,
       breaking: false,
       issues: [],
-      category: this.determineCategory(commit.subject)
+      category: this.determineCategory(commit.subject),
     };
 
     // Try to parse conventional commit format
     const conventionalMatch = this.conventionalCommitRegex.exec(commit.subject);
-    
+
     if (conventionalMatch?.groups) {
       const type = conventionalMatch.groups['type'];
       const scope = conventionalMatch.groups['scope'];
       const description = conventionalMatch.groups['description'];
-      
+
       if (type) {
         result.type = type;
         result.category = this.mapTypeToCategory(type);
@@ -59,10 +60,10 @@ export class CommitParser {
     result.breaking = this.hasBreakingChange(commit);
 
     // Extract issue numbers
-    result.issues = this.extractIssueNumbers(commit.subject + ' ' + commit.body);
+    result.issues = this.extractIssueNumbers(`${commit.subject} ${commit.body}`);
 
     // Extract PR number
-    const prNumber = this.extractPRNumber(commit.subject + ' ' + commit.body);
+    const prNumber = this.extractPRNumber(`${commit.subject} ${commit.body}`);
     if (prNumber !== undefined) {
       result.prNumber = prNumber;
     }
@@ -80,7 +81,7 @@ export class CommitParser {
 
     for (const gitCommit of commits) {
       const parsed = this.parseCommit(gitCommit);
-      
+
       const commit: Commit = {
         hash: gitCommit.hash,
         message: gitCommit.subject,
@@ -88,7 +89,7 @@ export class CommitParser {
         author: gitCommit.author.name,
         date: gitCommit.author.date,
         breaking: parsed.breaking,
-        issues: parsed.issues
+        issues: parsed.issues,
       };
 
       // Add optional properties only if they exist
@@ -105,7 +106,7 @@ export class CommitParser {
       if (!categorizedCommits.has(parsed.category)) {
         categorizedCommits.set(parsed.category, []);
       }
-      
+
       categorizedCommits.get(parsed.category)!.push(commit);
     }
 
@@ -117,29 +118,29 @@ export class CommitParser {
    */
   private mapTypeToCategory(type: string): ChangeType {
     const typeMap: Record<string, ChangeType> = {
-      'feat': 'Added',
-      'feature': 'Added',
-      'add': 'Added',
-      'fix': 'Fixed',
-      'bugfix': 'Fixed',
-      'hotfix': 'Fixed',
-      'patch': 'Fixed',
-      'refactor': 'Changed',
-      'change': 'Changed',
-      'update': 'Changed',
-      'improve': 'Changed',
-      'enhancement': 'Changed',
-      'perf': 'Changed',
-      'performance': 'Changed',
-      'style': 'Changed',
-      'docs': 'Changed',
-      'doc': 'Changed',
-      'documentation': 'Changed',
-      'remove': 'Removed',
-      'delete': 'Removed',
-      'deprecate': 'Deprecated',
-      'security': 'Security',
-      'sec': 'Security'
+      feat: 'Added',
+      feature: 'Added',
+      add: 'Added',
+      fix: 'Fixed',
+      bugfix: 'Fixed',
+      hotfix: 'Fixed',
+      patch: 'Fixed',
+      refactor: 'Changed',
+      change: 'Changed',
+      update: 'Changed',
+      improve: 'Changed',
+      enhancement: 'Changed',
+      perf: 'Changed',
+      performance: 'Changed',
+      style: 'Changed',
+      docs: 'Changed',
+      doc: 'Changed',
+      documentation: 'Changed',
+      remove: 'Removed',
+      delete: 'Removed',
+      deprecate: 'Deprecated',
+      security: 'Security',
+      sec: 'Security',
     };
 
     return typeMap[type.toLowerCase()] || 'Changed';
@@ -152,17 +153,46 @@ export class CommitParser {
     const lowerMessage = message.toLowerCase();
 
     // Security-related keywords
-    if (this.containsKeywords(lowerMessage, ['security', 'vulnerability', 'cve', 'exploit', 'xss', 'csrf', 'injection'])) {
+    if (
+      this.containsKeywords(lowerMessage, [
+        'security',
+        'vulnerability',
+        'cve',
+        'exploit',
+        'xss',
+        'csrf',
+        'injection',
+      ])
+    ) {
       return 'Security';
     }
 
     // Addition keywords
-    if (this.containsKeywords(lowerMessage, ['add', 'new', 'create', 'implement', 'introduce', 'feature'])) {
+    if (
+      this.containsKeywords(lowerMessage, [
+        'add',
+        'new',
+        'create',
+        'implement',
+        'introduce',
+        'feature',
+      ])
+    ) {
       return 'Added';
     }
 
     // Fix keywords
-    if (this.containsKeywords(lowerMessage, ['fix', 'bug', 'issue', 'error', 'problem', 'resolve', 'correct'])) {
+    if (
+      this.containsKeywords(lowerMessage, [
+        'fix',
+        'bug',
+        'issue',
+        'error',
+        'problem',
+        'resolve',
+        'correct',
+      ])
+    ) {
       return 'Fixed';
     }
 
@@ -191,7 +221,7 @@ export class CommitParser {
    * Check if commit has breaking changes
    */
   private hasBreakingChange(commit: GitCommit): boolean {
-    const fullMessage = commit.subject + '\n' + commit.body;
+    const fullMessage = `${commit.subject}\n${commit.body}`;
     return this.breakingChangeRegex.test(fullMessage);
   }
 
@@ -218,7 +248,7 @@ export class CommitParser {
   private extractPRNumber(message: string): number | undefined {
     this.prRegex.lastIndex = 0; // Reset regex
     const match = this.prRegex.exec(message);
-    
+
     if (match) {
       // Find the first non-undefined capture group
       const prNumber = match[1] || match[2] || match[3] || match[4];

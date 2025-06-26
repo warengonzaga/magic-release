@@ -1,6 +1,6 @@
 /// <reference path="../../globals.d.ts" />
 
-import { ProviderFactory } from '../../../src/core/llm/providers/ProviderFactory';
+import { ProviderFactory } from '../../../src/core/llm/ProviderFactory';
 import { OpenAIProvider } from '../../../src/core/llm/providers/OpenAIProvider';
 import { AnthropicProvider } from '../../../src/core/llm/providers/AnthropicProvider';
 import { AzureProvider } from '../../../src/core/llm/providers/AzureProvider';

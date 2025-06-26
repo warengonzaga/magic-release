@@ -3,14 +3,15 @@
  * Manages providers and provides unified interface for changelog generation
  */
 
+import type { MagicReleaseConfig } from '../../types/index.js';
+import { LLMError, createMissingAPIKeyError } from '../../utils/errors.js';
+import { logger } from '../../utils/logger.js';
+
 import type { LLMMessage } from './providers/BaseProvider.js';
 import BaseProvider from './providers/BaseProvider.js';
 import ProviderFactory from './ProviderFactory.js';
 import type { ProviderType } from './providers/ProviderInterface.js';
 import ChangelogPrompt from './prompts/ChangelogPrompt.js';
-import type { MagicReleaseConfig } from '../../types/index.js';
-import { LLMError, createMissingAPIKeyError } from '../../utils/errors.js';
-import { logger } from '../../utils/logger.js';
 
 export interface LLMServiceConfig {
   provider: ProviderType;
@@ -39,10 +40,10 @@ export class LLMService {
         apiKey: config.apiKey,
         ...(config.model && { model: config.model }),
         ...(config.temperature && { temperature: config.temperature }),
-        ...(config.maxTokens && { maxTokens: config.maxTokens })
+        ...(config.maxTokens && { maxTokens: config.maxTokens }),
       },
       changelog: {},
-      git: {}
+      git: {},
     });
   }
 
@@ -68,11 +69,7 @@ export class LLMService {
         options.organization = config.organization;
       }
 
-      return ProviderFactory.createProviderFromConfig(
-        config.provider,
-        config.apiKey,
-        options
-      );
+      return ProviderFactory.createProviderFromConfig(config.provider, config.apiKey, options);
     } catch (error) {
       logger.error(`Failed to create ${config.provider} provider`, error);
       throw error;
@@ -92,20 +89,20 @@ export class LLMService {
     const messages: LLMMessage[] = [
       {
         role: 'system',
-        content: this.promptGenerator.getSystemPrompt()
+        content: this.promptGenerator.getSystemPrompt(),
       },
       {
         role: 'user',
-        content: this.getUserPrompt(commits, projectContext, previousChangelog)
-      }
+        content: this.getUserPrompt(commits, projectContext, previousChangelog),
+      },
     ];
 
     try {
       const response = await this.provider.generateCompletion(messages);
-      
+
       logger.info('Changelog generated successfully', {
         tokensUsed: response.usage?.totalTokens,
-        model: response.model
+        model: response.model,
       });
 
       return response.content;
@@ -122,12 +119,13 @@ export class LLMService {
     const messages: LLMMessage[] = [
       {
         role: 'system',
-        content: 'You are a commit categorization expert. Categorize the following commit into one of these categories: Added, Changed, Deprecated, Removed, Fixed, Security. Respond with only the category name.'
+        content:
+          'You are a commit categorization expert. Categorize the following commit into one of these categories: Added, Changed, Deprecated, Removed, Fixed, Security. Respond with only the category name.',
       },
       {
         role: 'user',
-        content: this.promptGenerator.getCategorizationPrompt(commitMessage)
-      }
+        content: this.promptGenerator.getCategorizationPrompt(commitMessage),
+      },
     ];
 
     try {
@@ -146,12 +144,13 @@ export class LLMService {
     const messages: LLMMessage[] = [
       {
         role: 'system',
-        content: 'You are a release manager. Create a concise, engaging summary of the release based on the changelog. Focus on the most important changes and their impact for users.'
+        content:
+          'You are a release manager. Create a concise, engaging summary of the release based on the changelog. Focus on the most important changes and their impact for users.',
       },
       {
         role: 'user',
-        content: this.promptGenerator.getReleaseSummaryPrompt(changelogContent)
-      }
+        content: this.promptGenerator.getReleaseSummaryPrompt(changelogContent),
+      },
     ];
 
     try {
@@ -168,7 +167,7 @@ export class LLMService {
    */
   async testConnection(): Promise<boolean> {
     logger.debug('Testing LLM connection');
-    
+
     try {
       const result = await this.provider.testConnection();
       const isConnected = result.valid;
@@ -209,7 +208,7 @@ export class LLMService {
   getProviderInfo(): { name: string; model?: string } {
     return {
       name: this.provider.getProviderName(),
-      ...(this.config.model && { model: this.config.model })
+      ...(this.config.model && { model: this.config.model }),
     };
   }
 
@@ -246,7 +245,7 @@ export class LLMService {
       apiKey: config.llm.apiKey,
       ...(config.llm.model && { model: config.llm.model }),
       ...(config.llm.temperature && { temperature: config.llm.temperature }),
-      ...(config.llm.maxTokens && { maxTokens: config.llm.maxTokens })
+      ...(config.llm.maxTokens && { maxTokens: config.llm.maxTokens }),
     };
 
     return new LLMService(serviceConfig);

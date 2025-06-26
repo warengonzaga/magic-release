@@ -32,42 +32,26 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     name: 'openai',
     apiKeyPattern: /^sk-[a-zA-Z0-9\-_]{40,}$/,
     defaultModel: 'gpt-4o-mini',
-    supportedModels: [
-      'gpt-4o-mini',
-      'gpt-4o',
-      'gpt-4-turbo',
-      'gpt-3.5-turbo',
-      'gpt-4'
-    ],
+    supportedModels: ['gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo', 'gpt-4'],
     maxTokensLimit: 4096,
-    temperatureRange: [0, 2]
+    temperatureRange: [0, 2],
   },
   anthropic: {
     name: 'anthropic',
     apiKeyPattern: /^sk-ant-[a-zA-Z0-9\-_]{40,}$/,
     defaultModel: 'claude-3-haiku',
-    supportedModels: [
-      'claude-3-haiku',
-      'claude-3-sonnet',
-      'claude-3-opus',
-      'claude-3-5-sonnet'
-    ],
+    supportedModels: ['claude-3-haiku', 'claude-3-sonnet', 'claude-3-opus', 'claude-3-5-sonnet'],
     maxTokensLimit: 4096,
-    temperatureRange: [0, 1]
+    temperatureRange: [0, 1],
   },
   azure: {
     name: 'azure',
     apiKeyPattern: /^[a-zA-Z0-9]{32,}$/,
     defaultModel: 'gpt-4',
-    supportedModels: [
-      'gpt-4',
-      'gpt-4-turbo',
-      'gpt-35-turbo',
-      'gpt-4o-mini'
-    ],
+    supportedModels: ['gpt-4', 'gpt-4-turbo', 'gpt-35-turbo', 'gpt-4o-mini'],
     maxTokensLimit: 4096,
-    temperatureRange: [0, 2]
-  }
+    temperatureRange: [0, 2],
+  },
 };
 
 export default PROVIDER_CONFIGS;

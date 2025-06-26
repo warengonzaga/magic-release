@@ -6,21 +6,22 @@
 import path from 'path';
 import { existsSync, readFileSync } from 'fs';
 
+import type {
+  MagicReleaseConfig,
+  RepositoryAnalysis,
+  CLIFlags,
+  Commit,
+  ChangelogEntry,
+  ChangeType,
+} from '../types/index.js';
+import { logger } from '../utils/logger.js';
+
 import GitService from './git/GitService.js';
 import CommitParser from './git/CommitParser.js';
 import TagManager from './git/TagManager.js';
 import LLMService from './llm/LLMService.js';
 import KeepChangelogGenerator from './generator/KeepChangelogGenerator.js';
 import ChangelogParser from './generator/ChangelogParser.js';
-import type { 
-  MagicReleaseConfig, 
-  RepositoryAnalysis,
-  CLIFlags,
-  Commit,
-  ChangelogEntry,
-  ChangeType
-} from '../types/index.js';
-import { logger } from '../utils/logger.js';
 
 export interface GenerateOptions {
   from?: string;
@@ -55,7 +56,7 @@ export class MagicRelease {
     logger.info('MagicRelease initialized', {
       cwd: this.cwd,
       provider: config.llm.provider,
-      model: config.llm.model
+      model: config.llm.model,
     });
   }
 
@@ -68,10 +69,10 @@ export class MagicRelease {
     try {
       // Analyze repository
       const analysis = await this.analyzeRepository(options);
-      
+
       // Generate changelog content
       const changelogContent = await this.generateChangelogContent(analysis);
-      
+
       // Write to file unless dry run
       if (!options.dryRun) {
         await this.writeChangelog(changelogContent);
@@ -103,7 +104,7 @@ export class MagicRelease {
 
     // Determine commit range
     const { from, to } = this.determineCommitRange(options, tags);
-    
+
     // Get commits in range
     const gitCommits = this.gitService.getCommitsBetween(from, to);
     const categorizedCommits = this.commitParser.parseCommits(gitCommits);
@@ -122,13 +123,13 @@ export class MagicRelease {
       tags,
       commits,
       newVersions: [], // Will be populated by changelog generation
-      existingVersions
+      existingVersions,
     };
 
     logger.debug('Repository analysis complete', {
       tagsCount: tags.length,
       commitsCount: commits.length,
-      commitRange: `${from || 'beginning'}..${to}`
+      commitRange: `${from || 'beginning'}..${to}`,
     });
 
     return analysis;
@@ -142,7 +143,7 @@ export class MagicRelease {
 
     // Convert commits to changelog entries
     const entries = await this.createChangelogEntries(analysis);
-    
+
     // Generate changelog using Keep a Changelog format
     const changelogContent = await this.changelogGenerator.generate(entries, this.cwd);
 
@@ -164,14 +165,14 @@ export class MagicRelease {
     const unreleasedEntry: ChangelogEntry = {
       version: 'Unreleased',
       date: new Date(),
-      sections: new Map()
+      sections: new Map(),
     };
 
     // Categorize commits using LLM
     for (const commit of analysis.commits) {
       try {
-        const category = await this.llmService.categorizeCommit(commit.message) as ChangeType;
-        
+        const category = (await this.llmService.categorizeCommit(commit.message)) as ChangeType;
+
         if (!unreleasedEntry.sections.has(category)) {
           unreleasedEntry.sections.set(category, []);
         }
@@ -182,7 +183,7 @@ export class MagicRelease {
           commits: [commit],
           ...(commit.scope && { scope: commit.scope }),
           ...(commit.pr && { pr: commit.pr }),
-          ...(commit.issues && commit.issues.length > 0 && { issues: commit.issues })
+          ...(commit.issues && commit.issues.length > 0 && { issues: commit.issues }),
         });
       } catch (error) {
         logger.warn(`Failed to categorize commit: ${commit.hash}`, error);
@@ -193,7 +194,7 @@ export class MagicRelease {
         const changes = unreleasedEntry.sections.get('Changed')!;
         changes.push({
           description: this.generateChangeDescription(commit),
-          commits: [commit]
+          commits: [commit],
         });
       }
     }
@@ -210,7 +211,10 @@ export class MagicRelease {
     let description = commit.message;
 
     // Remove conventional commit prefixes if present
-    description = description.replace(/^(feat|fix|docs|style|refactor|test|chore|perf)(\(.+\))?:\s*/, '');
+    description = description.replace(
+      /^(feat|fix|docs|style|refactor|test|chore|perf)(\(.+\))?:\s*/,
+      ''
+    );
 
     // Capitalize first letter
     description = description.charAt(0).toUpperCase() + description.slice(1);
@@ -225,7 +229,7 @@ export class MagicRelease {
    * Determine commit range for analysis
    */
   private determineCommitRange(
-    options: GenerateOptions, 
+    options: GenerateOptions,
     tags: any[]
   ): { from?: string; to: string } {
     if (options.from && options.to) {
@@ -238,17 +242,17 @@ export class MagicRelease {
 
     if (options.to) {
       const latestTag = this.tagManager.getLatestReleaseTag(tags);
-      return { 
-        ...(latestTag?.name && { from: latestTag.name }), 
-        to: options.to 
+      return {
+        ...(latestTag?.name && { from: latestTag.name }),
+        to: options.to,
       };
     }
 
     // Default: from latest tag to HEAD
     const latestTag = this.tagManager.getLatestReleaseTag(tags);
-    return { 
-      ...(latestTag?.name && { from: latestTag.name }), 
-      to: 'HEAD' 
+    return {
+      ...(latestTag?.name && { from: latestTag.name }),
+      to: 'HEAD',
     };
   }
 
@@ -262,20 +266,20 @@ export class MagicRelease {
     // Basic GitHub/GitLab URL parsing
     const githubMatch = remoteUrl.match(/github\.com[:/]([^/]+)\/([^/]+?)(?:\.git)?$/);
     const gitlabMatch = remoteUrl.match(/gitlab\.com[:/]([^/]+)\/([^/]+?)(?:\.git)?$/);
-    
+
     if (githubMatch) {
       return {
         owner: githubMatch[1],
         name: githubMatch[2],
-        url: `https://github.com/${githubMatch[1]}/${githubMatch[2]}`
+        url: `https://github.com/${githubMatch[1]}/${githubMatch[2]}`,
       };
     }
-    
+
     if (gitlabMatch) {
       return {
         owner: gitlabMatch[1],
         name: gitlabMatch[2],
-        url: `https://gitlab.com/${gitlabMatch[1]}/${gitlabMatch[2]}`
+        url: `https://gitlab.com/${gitlabMatch[1]}/${gitlabMatch[2]}`,
       };
     }
 
@@ -283,7 +287,7 @@ export class MagicRelease {
     return {
       owner: 'unknown',
       name: path.basename(this.cwd),
-      url: remoteUrl
+      url: remoteUrl,
     };
   }
 
@@ -292,7 +296,7 @@ export class MagicRelease {
    */
   private getExistingChangelog(): string | undefined {
     const changelogPath = this.getChangelogPath();
-    
+
     if (existsSync(changelogPath)) {
       try {
         return readFileSync(changelogPath, 'utf8');
@@ -333,7 +337,7 @@ export class MagicRelease {
   async testServices(): Promise<{ git: boolean; llm: boolean }> {
     const results = {
       git: false,
-      llm: false
+      llm: false,
     };
 
     try {
@@ -357,7 +361,7 @@ export class MagicRelease {
    */
   static async fromCLIFlags(flags: CLIFlags, config: MagicReleaseConfig): Promise<MagicRelease> {
     const instance = new MagicRelease(config);
-    
+
     if (flags.verbose) {
       logger.setLevel('debug');
     }

@@ -3,12 +3,13 @@
  * Implements Claude API integration
  */
 
+import { createInvalidAPIKeyError, LLMError } from '../../../utils/errors.js';
+import { logger } from '../../../utils/logger.js';
+
 import type { LLMMessage, LLMResponse, LLMConfig } from './BaseProvider.js';
 import BaseProvider from './BaseProvider.js';
 import type { ProviderValidator, ValidationResult } from './ProviderInterface.js';
 import { PROVIDER_CONFIGS } from './ProviderInterface.js';
-import { createInvalidAPIKeyError, LLMError } from '../../../utils/errors.js';
-import { logger } from '../../../utils/logger.js';
 
 export interface AnthropicConfig extends LLMConfig {
   // Anthropic-specific config options can be added here
@@ -42,7 +43,7 @@ export class AnthropicProvider extends BaseProvider implements ProviderValidator
   constructor(config: AnthropicConfig) {
     super({
       model: 'claude-3-haiku-20240307', // Default to cost-effective model
-      ...config
+      ...config,
     });
 
     if (!this.validateApiKeySync(config.apiKey)) {
@@ -71,7 +72,7 @@ export class AnthropicProvider extends BaseProvider implements ProviderValidator
 
     try {
       const response = await this.makeRequest(messages);
-      
+
       if (!response.content || response.content.length === 0) {
         throw new LLMError('No content returned from Anthropic API');
       }
@@ -83,10 +84,10 @@ export class AnthropicProvider extends BaseProvider implements ProviderValidator
         usage: {
           promptTokens: response.usage.input_tokens,
           completionTokens: response.usage.output_tokens,
-          totalTokens: response.usage.input_tokens + response.usage.output_tokens
+          totalTokens: response.usage.input_tokens + response.usage.output_tokens,
         },
         model: response.model,
-        finishReason: response.stop_reason
+        finishReason: response.stop_reason,
       };
 
       logger.debug(`Anthropic response: ${result.content.substring(0, 200)}...`);
@@ -111,7 +112,7 @@ export class AnthropicProvider extends BaseProvider implements ProviderValidator
       'Content-Type': 'application/json',
       'x-api-key': this.config.apiKey,
       'anthropic-version': '2023-06-01',
-      'User-Agent': 'MagicRelease/1.0.0'
+      'User-Agent': 'MagicRelease/1.0.0',
     };
 
     // Convert messages format for Anthropic
@@ -124,7 +125,7 @@ export class AnthropicProvider extends BaseProvider implements ProviderValidator
       } else {
         anthropicMessages.push({
           role: message.role as 'user' | 'assistant',
-          content: message.content
+          content: message.content,
         });
       }
     }
@@ -133,7 +134,7 @@ export class AnthropicProvider extends BaseProvider implements ProviderValidator
       model: this.config.model,
       messages: anthropicMessages,
       max_tokens: this.config.maxTokens,
-      temperature: this.config.temperature
+      temperature: this.config.temperature,
     };
 
     if (systemMessage) {
@@ -148,26 +149,26 @@ export class AnthropicProvider extends BaseProvider implements ProviderValidator
         method: 'POST',
         headers,
         body: JSON.stringify(body),
-        signal: controller.signal
+        signal: controller.signal,
       });
 
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({})) as any;
+        const errorData = (await response.json().catch(() => ({}))) as any;
         throw new LLMError(
           `Anthropic API error: ${response.status} - ${errorData.error?.message || response.statusText}`
         );
       }
 
-      return await response.json() as AnthropicResponse;
+      return (await response.json()) as AnthropicResponse;
     } catch (error) {
       clearTimeout(timeoutId);
-      
+
       if ((error as Error).name === 'AbortError') {
         throw new LLMError('Anthropic API request timed out');
       }
-      
+
       throw error;
     }
   }
@@ -180,15 +181,15 @@ export class AnthropicProvider extends BaseProvider implements ProviderValidator
 
     // Basic format validation
     if (!AnthropicProvider.config?.apiKeyPattern.test(key)) {
-      return { 
-        valid: false, 
-        message: 'Invalid Anthropic API key format. Expected format: sk-ant-xxx...' 
+      return {
+        valid: false,
+        message: 'Invalid Anthropic API key format. Expected format: sk-ant-xxx...',
       };
     }
 
-    return { 
-      valid: true, 
-      message: 'API key format is valid' 
+    return {
+      valid: true,
+      message: 'API key format is valid',
     };
   }
 
@@ -210,7 +211,7 @@ export class AnthropicProvider extends BaseProvider implements ProviderValidator
       const headers = {
         'Content-Type': 'application/json',
         'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01'
+        'anthropic-version': '2023-06-01',
       };
 
       const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -219,34 +220,34 @@ export class AnthropicProvider extends BaseProvider implements ProviderValidator
         body: JSON.stringify({
           model: 'claude-3-haiku-20240307',
           messages: [{ role: 'user', content: 'Hi' }],
-          max_tokens: 10
-        })
+          max_tokens: 10,
+        }),
       });
 
       if (response.status === 200) {
         logger.info('Anthropic API key validation successful');
-        return { 
-          valid: true, 
-          message: '✅ Anthropic API key is valid and working!' 
+        return {
+          valid: true,
+          message: '✅ Anthropic API key is valid and working!',
         };
       } else if (response.status === 401) {
         logger.warn('Anthropic API key validation failed - unauthorized');
-        return { 
-          valid: false, 
-          message: '❌ Invalid Anthropic API key - unauthorized' 
+        return {
+          valid: false,
+          message: '❌ Invalid Anthropic API key - unauthorized',
         };
       } else {
         logger.warn(`Anthropic API returned status ${response.status}`);
-        return { 
-          valid: true, 
-          message: '⚠️ API key appears valid (non-auth error occurred)' 
+        return {
+          valid: true,
+          message: '⚠️ API key appears valid (non-auth error occurred)',
         };
       }
     } catch (error) {
       logger.error('Anthropic API connection test failed', error);
-      return { 
-        valid: false, 
-        message: `🌐 Network error: ${(error as Error).message}` 
+      return {
+        valid: false,
+        message: `🌐 Network error: ${(error as Error).message}`,
       };
     }
   }
@@ -269,12 +270,14 @@ export class AnthropicProvider extends BaseProvider implements ProviderValidator
    * Get available models
    */
   getAvailableModels(): string[] {
-    return AnthropicProvider.config?.supportedModels || [
-      'claude-3-haiku-20240307',
-      'claude-3-sonnet-20240229',
-      'claude-3-opus-20240229',
-      'claude-3-5-sonnet-20241022'
-    ];
+    return (
+      AnthropicProvider.config?.supportedModels || [
+        'claude-3-haiku-20240307',
+        'claude-3-sonnet-20240229',
+        'claude-3-opus-20240229',
+        'claude-3-5-sonnet-20241022',
+      ]
+    );
   }
 }
 

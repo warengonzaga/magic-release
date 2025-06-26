@@ -24,19 +24,19 @@
         return new AzureProvider(azureConfig);tiation and configuration management
  */
 
+import type { MagicReleaseConfig } from '../../types/interfaces.js';
+import { ConfigError, createMissingAPIKeyError } from '../../utils/errors.js';
+import { logger } from '../../utils/logger.js';
+
 import type { LLMConfig } from './providers/BaseProvider.js';
 import type { OpenAIConfig } from './providers/OpenAIProvider.js';
 import type { AnthropicConfig } from './providers/AnthropicProvider.js';
 import type { AzureConfig } from './providers/AzureProvider.js';
 import type { ProviderType } from './providers/ProviderInterface.js';
-
 import OpenAIProvider from './providers/OpenAIProvider.js';
 import AnthropicProvider from './providers/AnthropicProvider.js';
 import AzureProvider from './providers/AzureProvider.js';
 import BaseProvider from './providers/BaseProvider.js';
-
-import { ConfigError, createMissingAPIKeyError } from '../../utils/errors.js';
-import { logger } from '../../utils/logger.js';
 
 export type ProviderConfig = OpenAIConfig | AnthropicConfig | AzureConfig;
 
@@ -47,10 +47,7 @@ export class ProviderFactory {
   /**
    * Create a provider instance based on type and configuration
    */
-  static createProvider(
-    providerType: ProviderType,
-    config: ProviderConfig
-  ): BaseProvider {
+  static createProvider(providerType: ProviderType, config: ProviderConfig): BaseProvider {
     logger.debug(`Creating ${providerType} provider instance`);
 
     if (!config.apiKey) {
@@ -60,13 +57,13 @@ export class ProviderFactory {
     switch (providerType) {
       case 'openai':
         return new OpenAIProvider(config as OpenAIConfig);
-      
+
       case 'anthropic':
         return new AnthropicProvider(config as AnthropicConfig);
-      
+
       case 'azure':
         return new AzureProvider(config as AzureConfig);
-      
+
       default:
         throw new ConfigError(`Unsupported provider type: ${providerType}`);
     }
@@ -93,7 +90,7 @@ export class ProviderFactory {
         const openaiConfig: OpenAIConfig = {
           ...baseConfig,
         };
-        
+
         // Add optional properties only if they exist
         const partialOpenAI = options as Partial<OpenAIConfig>;
         if (partialOpenAI.baseURL) {
@@ -102,27 +99,30 @@ export class ProviderFactory {
         if (partialOpenAI.organization) {
           openaiConfig.organization = partialOpenAI.organization;
         }
-        
+
         return new OpenAIProvider(openaiConfig);
-      
+
       case 'anthropic':
         const anthropicConfig: AnthropicConfig = {
           ...baseConfig,
         };
         return new AnthropicProvider(anthropicConfig);
-      
+
       case 'azure':
-        const endpoint = (options as Partial<AzureConfig>).endpoint || process.env['AZURE_OPENAI_ENDPOINT'];
-        
+        const endpoint =
+          (options as Partial<AzureConfig>).endpoint || process.env['AZURE_OPENAI_ENDPOINT'];
+
         if (!endpoint) {
-          throw new ConfigError('Azure endpoint is required. Set AZURE_OPENAI_ENDPOINT or provide endpoint in config.');
+          throw new ConfigError(
+            'Azure endpoint is required. Set AZURE_OPENAI_ENDPOINT or provide endpoint in config.'
+          );
         }
-        
+
         const azureConfig: AzureConfig = {
           ...baseConfig,
           endpoint,
         };
-        
+
         // Add optional properties
         const partialAzure = options as Partial<AzureConfig>;
         if (partialAzure.apiVersion) {
@@ -131,9 +131,9 @@ export class ProviderFactory {
         if (partialAzure.deploymentName) {
           azureConfig.deploymentName = partialAzure.deploymentName;
         }
-        
+
         return new AzureProvider(azureConfig);
-      
+
       default:
         throw new ConfigError(`Unsupported provider type: ${providerType}`);
     }

@@ -4,6 +4,7 @@
  */
 
 import { execSync } from 'child_process';
+
 import semver from 'semver';
 
 import type { GitTag, Tag } from '../../types/index.js';
@@ -31,13 +32,13 @@ export class TagManager {
     try {
       const fullCommand = `git ${command}`;
       logger.debug(`Executing: ${fullCommand}`);
-      
+
       const result = execSync(fullCommand, {
         cwd: this.cwd,
         encoding: 'utf8',
-        stdio: ['ignore', 'pipe', 'pipe']
+        stdio: ['ignore', 'pipe', 'pipe'],
       });
-      
+
       return result.trim();
     } catch (error: any) {
       logger.error(`Git command failed: git ${command}`, error);
@@ -50,7 +51,7 @@ export class TagManager {
    */
   public convertGitTagToTag(gitTag: GitTag): Tag | null {
     const version = this.extractVersion(gitTag.name);
-    
+
     if (!version) {
       logger.debug(`Could not extract version from tag: ${gitTag.name}`);
       return null;
@@ -61,7 +62,7 @@ export class TagManager {
       version,
       hash: this.getTagCommitHash(gitTag.name),
       date: gitTag.date,
-      isPreRelease: this.isPreReleaseVersion(version)
+      isPreRelease: this.isPreReleaseVersion(version),
     };
   }
 
@@ -112,7 +113,7 @@ export class TagManager {
 
     for (const pattern of patterns) {
       const match = pattern.exec(tagName);
-      if (match && match[1]) {
+      if (match?.[1]) {
         const version = match[1];
         // Validate with semver
         if (semver.valid(version)) {
@@ -159,7 +160,7 @@ export class TagManager {
       return {
         nextVersion: '1.0.0',
         releaseType: 'major',
-        isFirstRelease: true
+        isFirstRelease: true,
       };
     }
 
@@ -183,26 +184,19 @@ export class TagManager {
       currentVersion,
       nextVersion,
       releaseType,
-      isFirstRelease: false
+      isFirstRelease: false,
     };
   }
 
   /**
    * Suggest next version based on conventional commits
    */
-  public suggestNextVersion(
-    currentTags: Tag[],
-    commitTypes: string[]
-  ): VersionPlan {
-    const hasBreaking = commitTypes.some(type => 
-      type.includes('!') || type.includes('BREAKING')
+  public suggestNextVersion(currentTags: Tag[], commitTypes: string[]): VersionPlan {
+    const hasBreaking = commitTypes.some(type => type.includes('!') || type.includes('BREAKING'));
+    const hasFeature = commitTypes.some(
+      type => type.startsWith('feat') || type.startsWith('feature')
     );
-    const hasFeature = commitTypes.some(type => 
-      type.startsWith('feat') || type.startsWith('feature')
-    );
-    const hasFix = commitTypes.some(type => 
-      type.startsWith('fix') || type.startsWith('bugfix')
-    );
+    const hasFix = commitTypes.some(type => type.startsWith('fix') || type.startsWith('bugfix'));
 
     return this.planNextVersion(currentTags, hasBreaking, hasFeature, hasFix);
   }
@@ -247,7 +241,7 @@ export class TagManager {
             version,
             hash: this.getTagCommitHash(tagName),
             date: new Date(), // We'd need additional git command to get exact date
-            isPreRelease: this.isPreReleaseVersion(version)
+            isPreRelease: this.isPreReleaseVersion(version),
           });
         }
       }

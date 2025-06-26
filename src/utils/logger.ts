@@ -39,14 +39,16 @@ class UIStateManager {
   public enableUIMode(withLock: boolean = false): void {
     const wasUIMode = this._isUIMode;
     this._isUIMode = true;
-    
+
     if (withLock) {
       this._lockCount++;
     }
-    
+
     // Log state change only if it actually changed and in development
     if (!wasUIMode && process.env['NODE_ENV'] === 'development') {
-      LogEngine.debug('[UIStateManager] UI mode enabled - suppressing debug/info logs, errors/warnings still visible');
+      LogEngine.debug(
+        '[UIStateManager] UI mode enabled - suppressing debug/info logs, errors/warnings still visible'
+      );
     }
   }
 
@@ -57,16 +59,16 @@ class UIStateManager {
     if (this._lockCount > 0 && !force) {
       return false; // Cannot disable while locked
     }
-    
+
     const wasUIMode = this._isUIMode;
     this._isUIMode = false;
     this._lockCount = 0; // Reset lock count when disabling
-    
+
     // Log state change only if it actually changed and in development
     if (wasUIMode && process.env['NODE_ENV'] === 'development') {
       LogEngine.debug('[UIStateManager] UI mode disabled - all log levels now visible');
     }
-    
+
     return true;
   }
 
@@ -92,7 +94,7 @@ class UIStateManager {
   public forceReset(): void {
     this._isUIMode = false;
     this._lockCount = 0;
-    
+
     if (process.env['NODE_ENV'] === 'development') {
       LogEngine.warn('[UIStateManager] Force reset executed - UI state cleared');
     }
@@ -130,7 +132,7 @@ LogEngine.addCustomRedactionPatterns([
   /password/i,
   /auth/i,
   /credential/i,
-  /openai/i
+  /openai/i,
 ]);
 
 // Add Magic Release specific sensitive fields
@@ -142,21 +144,34 @@ LogEngine.addSensitiveFields([
   'accessToken',
   'refreshToken',
   'gitToken',
-  'githubToken'
+  'githubToken',
 ]);
 
 // Logger interface that wraps LogEngine with additional functionality and UI mode support
 class Logger {
+  /**
+   * Configure log levels based on CLI flags
+   */
+  configureLogLevels(debug = false, verbose = false): void {
+    // Set the underlying log engine level
+    if (debug) {
+      LogEngine.configure({ mode: LogMode.DEBUG });
+    } else if (verbose) {
+      LogEngine.configure({ mode: LogMode.INFO });
+    } else {
+      LogEngine.configure({ mode: LogMode.WARN }); // Only warnings and errors
+    }
+  }
   /**
    * Centralized helper to determine if a log level should be suppressed during UI mode
    * Critical errors always pass through to ensure system stability
    */
   private shouldSuppressLog(level: 'debug' | 'info' | 'warn' | 'error' | 'log'): boolean {
     if (!uiStateManager.isUIMode) return false;
-    
+
     // Always allow critical errors and warnings through, even in UI mode
     if (level === 'error' || level === 'warn') return false;
-    
+
     // Suppress debug, info, and log during UI operations
     return true;
   }
@@ -172,7 +187,7 @@ class Logger {
   ): void {
     if (this.shouldSuppressLog(level)) return;
 
-    const logMethod = options?.withoutRedaction 
+    const logMethod = options?.withoutRedaction
       ? LogEngine.withoutRedaction()[level]
       : LogEngine[level];
 
@@ -223,10 +238,12 @@ class Logger {
    */
   debugRaw(message: string, data?: any): void {
     if (process.env['NODE_ENV'] !== 'development') {
-      this.warn('Raw logging attempted in non-development environment, using regular debug instead');
+      this.warn(
+        'Raw logging attempted in non-development environment, using regular debug instead'
+      );
       return this.debug(message, data);
     }
-    
+
     this.logWithUICheck('debug', message, data, { withoutRedaction: true });
   }
 
@@ -247,9 +264,9 @@ class Logger {
       warn: LogMode.WARN,
       error: LogMode.ERROR,
       silent: LogMode.SILENT,
-      off: LogMode.OFF
+      off: LogMode.OFF,
     };
-    
+
     LogEngine.configure({ mode: modeMap[level] });
   }
 
@@ -272,17 +289,17 @@ class Logger {
    */
   child(prefix: string): Logger {
     const childLogger = new Logger();
-    
+
     // Override methods to include prefix
     const originalMethods = ['debug', 'info', 'warn', 'error', 'log'] as const;
-    
+
     originalMethods.forEach(method => {
       const originalMethod = childLogger[method].bind(childLogger);
       childLogger[method] = (message: string, data?: any) => {
         originalMethod(`[${prefix}] ${message}`, data);
       };
     });
-    
+
     return childLogger;
   }
 
@@ -348,7 +365,7 @@ class Logger {
   forceLog(message: string, data?: any): void {
     const originalMode = uiStateManager.isUIMode;
     uiStateManager.disableUIMode(true); // Force disable with override
-    
+
     try {
       LogEngine.error(`[CRITICAL] ${message}`, data);
     } finally {
