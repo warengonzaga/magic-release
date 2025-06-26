@@ -104,23 +104,24 @@ class UIStateManager {
 // Get the singleton instance
 const uiStateManager = UIStateManager.getInstance();
 
-// LogEngine auto-configures based on NODE_ENV, but we can override for specific needs
-const env = process.env['NODE_ENV'] || 'development';
+// LogEngine auto-configures based on NODE_ENV, but we override based on CLI flags
+const env = process.env['NODE_ENV'] ?? 'development';
 
 // Configure based on environment with security considerations
+// Note: CLI flags will override these defaults via configureLogLevels()
 switch (env) {
   case 'production':
-    LogEngine.configure({ mode: LogMode.INFO });
+    LogEngine.configure({ mode: LogMode.WARN }); // Production: only warnings and errors
     break;
   case 'staging':
-    LogEngine.configure({ mode: LogMode.WARN });
+    LogEngine.configure({ mode: LogMode.INFO }); // Staging: info, warn, error
     break;
   case 'test':
-    LogEngine.configure({ mode: LogMode.ERROR });
+    LogEngine.configure({ mode: LogMode.ERROR }); // Test: only errors
     break;
   case 'development':
   default:
-    LogEngine.configure({ mode: LogMode.DEBUG });
+    LogEngine.configure({ mode: LogMode.DEBUG }); // Development: all logs
     break;
 }
 
@@ -151,15 +152,21 @@ LogEngine.addSensitiveFields([
 class Logger {
   /**
    * Configure log levels based on CLI flags
+   * --debug = development mode (all logs)
+   * --verbose = staging/test mode (info, warn, error)
+   * no flag = production mode (warn, error only)
    */
   configureLogLevels(debug = false, verbose = false): void {
     // Set the underlying log engine level
     if (debug) {
+      // Development mode - show all logs
       LogEngine.configure({ mode: LogMode.DEBUG });
     } else if (verbose) {
+      // Staging/test mode - show info, warn, and error logs
       LogEngine.configure({ mode: LogMode.INFO });
     } else {
-      LogEngine.configure({ mode: LogMode.WARN }); // Only warnings and errors
+      // Production mode - show only warnings and errors
+      LogEngine.configure({ mode: LogMode.WARN });
     }
   }
   /**

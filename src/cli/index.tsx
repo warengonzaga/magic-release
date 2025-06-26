@@ -9,6 +9,7 @@ import meow from 'meow';
 import chalk from 'chalk';
 
 import type { CLIFlags } from '../types/index.js';
+import type { ProviderType } from '../core/llm/providers/ProviderInterface.js';
 import { logger } from '../utils/logger.js';
 
 import App from './App.js';
@@ -108,7 +109,67 @@ const cli = meow(
 logger.enableUIMode();
 
 // Configure log levels based on CLI flags
+// --debug = development mode (all logs)
+// --verbose = staging/test mode (info, warn, error)
+// no flag = production mode (warn, error only)
 logger.configureLogLevels(cli.flags.debug, cli.flags.verbose);
+
+// Handle immediate CLI operations that should exit
+const handleImmediateFlags = async (): Promise<boolean> => {
+  const {
+    setProviderApiKey,
+    setProviderApiKeyUnsafe,
+    deleteProviderApiKey,
+    detectProviderFromKey,
+    getCurrentProvider,
+  } = await import('../utils/config-store.js');
+
+  try {
+    // Handle API key operations
+    if (cli.flags.setKey) {
+      let targetProvider = cli.flags.provider as ProviderType;
+      if (!targetProvider) {
+        const detected = detectProviderFromKey(cli.flags.setKey);
+        targetProvider = (detected ?? getCurrentProvider() ?? 'openai') as ProviderType;
+      }
+      await setProviderApiKey(targetProvider, cli.flags.setKey);
+      process.stdout.write('API key saved\n');
+      return true;
+    }
+
+    if (cli.flags.setKeyUnsafe) {
+      let targetProvider = cli.flags.provider as ProviderType;
+      if (!targetProvider) {
+        const detected = detectProviderFromKey(cli.flags.setKeyUnsafe);
+        targetProvider = (detected ?? getCurrentProvider() ?? 'openai') as ProviderType;
+      }
+      setProviderApiKeyUnsafe(targetProvider, cli.flags.setKeyUnsafe);
+      process.stdout.write('API key saved\n');
+      return true;
+    }
+
+    if (cli.flags.deleteKey) {
+      const targetProvider = (cli.flags.provider ?? getCurrentProvider()) as ProviderType;
+      if (!targetProvider) {
+        throw new Error('No provider specified or configured');
+      }
+      deleteProviderApiKey(targetProvider);
+      process.stdout.write('API key deleted\n');
+      return true;
+    }
+  } catch (error) {
+    process.stderr.write(`Error: ${(error as Error).message}\n`);
+    process.exit(2);
+  }
+
+  return false;
+};
+
+// Handle immediate flags and exit if needed
+const shouldExit = await handleImmediateFlags();
+if (shouldExit) {
+  process.exit(0);
+}
 
 // Render the React app with CLI flags
 render(<App flags={cli.flags as CLIFlags} />);

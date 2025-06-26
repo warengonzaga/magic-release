@@ -10,6 +10,7 @@ import type { ProviderType } from '../core/llm/providers/ProviderInterface.js';
 
 import { ConfigError, createInvalidAPIKeyError, createMissingAPIKeyError } from './errors.js';
 import { getProjectConfig } from './project-config.js';
+import { logger } from './logger.js';
 
 // Configuration interface
 interface StoredConfig {
@@ -78,14 +79,14 @@ export const isValidOpenAIKey = async (apiKey: string): Promise<boolean> => {
       if (response.status === 200) {
         return true;
       } else if (response.status === 401) {
-        console.warn('API key validation failed: Invalid credentials');
+        logger.warn('API key validation failed: Invalid credentials');
         return false;
       } else if (response.status === 429) {
-        console.warn('API key validation failed: Rate limit exceeded, but key format is valid');
+        logger.warn('API key validation failed: Rate limit exceeded, but key format is valid');
         // If we hit rate limits, the key is likely valid
         return true;
       } else {
-        console.warn(
+        logger.warn(
           `API validation returned status ${response.status}, assuming key is valid due to network/service issues`
         );
         // For other status codes, assume key is valid to avoid blocking users
@@ -95,18 +96,18 @@ export const isValidOpenAIKey = async (apiKey: string): Promise<boolean> => {
       clearTimeout(timeoutId);
 
       if (fetchError.name === 'AbortError') {
-        console.warn('API key validation timed out, assuming key is valid');
+        logger.warn('API key validation timed out, assuming key is valid');
         return true; // Timeout - assume valid to not block user
       }
 
-      console.warn(
+      logger.warn(
         'Network error during API key validation, assuming key is valid:',
         fetchError.message
       );
       return true; // Network errors - assume valid to not block user
     }
   } catch (error) {
-    console.warn('Error while validating API key format:', error);
+    logger.warn('Error while validating API key format:', error);
     return false;
   }
 };
@@ -122,16 +123,16 @@ export const setOpenAIKey = async (key: string, skipValidation = false): Promise
     }
     config.set('openai', key);
     config.set('provider', 'openai');
-    console.log('✅ OpenAI API key saved (validation skipped)');
+    logger.info('✅ OpenAI API key saved (validation skipped)');
     return;
   }
 
-  console.log('🔍 Validating OpenAI API key...');
+  logger.info('🔍 Validating OpenAI API key...');
   const isValid = await isValidOpenAIKey(key);
   if (isValid) {
     config.set('openai', key);
     config.set('provider', 'openai');
-    console.log('✅ OpenAI API key is valid and saved');
+    logger.info('✅ OpenAI API key is valid and saved');
   } else {
     throw createInvalidAPIKeyError('OpenAI');
   }
@@ -146,7 +147,7 @@ export const setOpenAIKeyUnsafe = (key: string): void => {
   }
   config.set('openai', key);
   config.set('provider', 'openai');
-  console.log('⚠️ OpenAI API key saved without validation');
+  logger.info('⚠️ OpenAI API key saved without validation');
 };
 
 /**
@@ -164,7 +165,7 @@ export const deleteOpenAIKey = (): void => {
   if (config.get('provider') === 'openai') {
     config.delete('provider');
   }
-  console.log('🗑️ OpenAI API key deleted');
+  logger.info('🗑️ OpenAI API key deleted');
 };
 
 /**
@@ -185,7 +186,7 @@ export const setCurrentProvider = (provider: ProviderType): void => {
   }
 
   config.set('provider', provider);
-  console.log(`✅ Switched to ${provider} provider`);
+  logger.info(`✅ Switched to ${provider} provider`);
 };
 
 /**
@@ -197,7 +198,7 @@ export const setProviderApiKey = async (
   skipValidation = false
 ): Promise<void> => {
   if (!skipValidation) {
-    console.log(`🔍 Validating ${provider} API key...`);
+    logger.info(`🔍 Validating ${provider} API key...`);
 
     // Use the provider-specific validation
     const isValid = await validateProviderApiKey(provider, key);
@@ -205,9 +206,9 @@ export const setProviderApiKey = async (
       throw createInvalidAPIKeyError(provider);
     }
 
-    console.log(`✅ ${provider} API key is valid and saved`);
+    logger.info(`✅ ${provider} API key is valid and saved`);
   } else {
-    console.log(`⚠️ ${provider} API key saved without validation`);
+    logger.info(`⚠️ ${provider} API key saved without validation`);
   }
 
   config.set(provider, key);
@@ -220,7 +221,7 @@ export const setProviderApiKey = async (
 export const setProviderApiKeyUnsafe = (provider: ProviderType, key: string): void => {
   config.set(provider, key);
   config.set('provider', provider);
-  console.log(`⚠️ ${provider} API key saved without validation`);
+  logger.info(`⚠️ ${provider} API key saved without validation`);
 };
 
 /**
@@ -238,7 +239,7 @@ export const deleteProviderApiKey = (provider: ProviderType): void => {
   if (config.get('provider') === provider) {
     config.delete('provider');
   }
-  console.log(`🗑️ ${provider} API key deleted`);
+  logger.info(`🗑️ ${provider} API key deleted`);
 };
 
 /**
@@ -328,7 +329,7 @@ export const listAllProviders = (): {
  */
 export const clearAllConfig = (): void => {
   config.clear();
-  console.log('🧹 All configuration cleared');
+  logger.info('🧹 All configuration cleared');
 };
 
 /**
@@ -606,7 +607,7 @@ export const testAPIKey = async (
       };
     }
 
-    console.log('🔍 Testing API key connectivity...');
+    logger.info('🔍 Testing API key connectivity...');
 
     // Test with a simple API call
     const controller = new AbortController();

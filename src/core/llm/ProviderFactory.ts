@@ -1,30 +1,7 @@
 /**
  * Provider Factory - Creates and manages LLM provider instances
- * Handles pr      case 'azure':
-        const endpoint = (options as Partial<AzureConfig>).endpoint || process.env['AZURE_OPENAI_ENDPOINT'];
-        
-        if (!endpoint) {
-          throw new ConfigError('Azure endpoint is required. Set AZURE_OPENAI_ENDPOINT or provide endpoint in config.');
-        }
-        
-        const azureConfig: AzureConfig = {
-          ...baseConfig,
-          endpoint,
-        };
-        
-        // Add optional properties
-        const partialAzure = options as Partial<AzureConfig>;
-        if (partialAzure.apiVersion) {
-          azureConfig.apiVersion = partialAzure.apiVersion;
-        }
-        if (partialAzure.deploymentName) {
-          azureConfig.deploymentName = partialAzure.deploymentName;
-        }
-        
-        return new AzureProvider(azureConfig);tiation and configuration management
+ * Handles provider instantiation and configuration management
  */
-
-import type { MagicReleaseConfig } from '../../types/interfaces.js';
 import { ConfigError, createMissingAPIKeyError } from '../../utils/errors.js';
 import { logger } from '../../utils/logger.js';
 

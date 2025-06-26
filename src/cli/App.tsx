@@ -61,22 +61,6 @@ const App: React.FC<AppProps> = ({ flags }) => {
           // Show provider list when --provider is used without argument
           return;
         }
-
-        // Handle API key operations
-        if (flags.setKey) {
-          await handleSetKeyEffect(flags.setKey, flags.provider);
-          return;
-        }
-
-        if (flags.setKeyUnsafe) {
-          await handleSetKeyUnsafeEffect(flags.setKeyUnsafe, flags.provider);
-          return;
-        }
-
-        if (flags.deleteKey) {
-          await handleDeleteKeyEffect(flags.provider);
-          return;
-        }
       } catch (error) {
         setActionResult(`Error: ${(error as Error).message}`);
       }
@@ -679,56 +663,7 @@ const GenerateConfigInterface: React.FC = () => {
 // Effect handlers that don't call process.exit (for use in React components)
 const handleProviderSwitchEffect = async (provider: ProviderType): Promise<void> => {
   setCurrentProvider(provider);
-  console.log(`✅ Switched to ${provider} provider`);
-  setTimeout(() => process.exit(0), 100); // Delay exit to let React finish
-};
-
-const handleSetKeyEffect = async (apiKey: string, provider?: ProviderType): Promise<void> => {
-  let targetProvider = provider;
-
-  // If no provider specified, try to auto-detect from key format
-  if (!targetProvider) {
-    const detected = detectProviderFromKey(apiKey);
-    if (detected) {
-      targetProvider = detected;
-      console.log(`🔍 Auto-detected ${detected} provider from key format`);
-    } else {
-      // Default to current provider or OpenAI
-      targetProvider = (getCurrentProvider() as ProviderType) ?? 'openai';
-      console.log(`⚠️ Could not auto-detect provider, using ${targetProvider}`);
-    }
-  }
-
-  await setProviderApiKey(targetProvider, apiKey);
-  setTimeout(() => process.exit(0), 100); // Delay exit to let React finish
-};
-
-const handleSetKeyUnsafeEffect = async (apiKey: string, provider?: ProviderType): Promise<void> => {
-  let targetProvider = provider;
-
-  // If no provider specified, try to auto-detect from key format
-  if (!targetProvider) {
-    const detected = detectProviderFromKey(apiKey);
-    if (detected) {
-      targetProvider = detected;
-      console.log(`🔍 Auto-detected ${detected} provider from key format`);
-    } else {
-      // Default to current provider or OpenAI
-      targetProvider = (getCurrentProvider() as ProviderType) ?? 'openai';
-      console.log(`⚠️ Could not auto-detect provider, using ${targetProvider}`);
-    }
-  }
-
-  setProviderApiKeyUnsafe(targetProvider, apiKey);
-  setTimeout(() => process.exit(0), 100); // Delay exit to let React finish
-};
-
-const handleDeleteKeyEffect = async (provider?: ProviderType): Promise<void> => {
-  const targetProvider = provider ?? (getCurrentProvider() as ProviderType);
-  if (!targetProvider) {
-    throw new Error('❌ No provider specified or configured');
-  }
-  deleteProviderApiKey(targetProvider);
+  logger.info(`✅ Switched to ${provider} provider`);
   setTimeout(() => process.exit(0), 100); // Delay exit to let React finish
 };
 
