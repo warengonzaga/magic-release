@@ -182,12 +182,6 @@ const handleImmediateFlags = async (): Promise<boolean> => {
   return false;
 };
 
-// Configure log levels based on CLI flags first
-// --debug = development mode (all logs)
-// --verbose = staging/test mode (info, warn, error)
-// no flag = production mode (warn, error only)
-logger.configureLogLevels(cli.flags.debug, cli.flags.verbose);
-
 // Handle immediate flags and exit if needed
 const shouldExit = await handleImmediateFlags();
 if (shouldExit) {
@@ -196,6 +190,13 @@ if (shouldExit) {
 
 // Enable UI mode to suppress logger output during React Ink rendering
 logger.enableUIMode();
+
+// Configure log levels based on CLI flags AFTER UI mode is enabled
+// This ensures logs appear after the UI renders
+// --debug = development mode (all logs)
+// --verbose = staging/test mode (info, warn, error)
+// no flag = production mode (warn, error only)
+logger.configureLogLevels(cli.flags.debug, cli.flags.verbose);
 
 // Render the React app with CLI flags
 render(<App flags={cli.flags as CLIFlags} />);

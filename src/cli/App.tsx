@@ -1,14 +1,5 @@
 /**
- * Main Aimport { 
-  hasValidConfig, 
-  setProviderApiKey, 
-  setProviderApiKeyUnsafe,
-  testAPIKey,
-  deleteProviderApiKey, 
-  getCurrentProvider,
-  setCurrentProvider,
-  listAllProviders
-} from '../utils/config-store.js';nent for MagicRelease CLI
+ * Main App Component for MagicRelease CLI
  * React component using Ink for terminal UI
  */
 
@@ -29,6 +20,141 @@ import {
 } from '../utils/config-store.js';
 import { isGitRepository, isCommitterConfigured } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
+
+// Console Box component for displaying logs when verbose/debug is enabled
+interface ConsoleBoxProps {
+  enabled: boolean;
+}
+
+interface LogEntry {
+  timestamp: string;
+  level: string;
+  message: string;
+}
+
+const ConsoleBox: React.FC<ConsoleBoxProps> = ({ enabled }) => {
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [maxLogs] = useState(50); // Keep last 50 log entries
+
+  useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
+    // Store original console methods
+    const originalConsole = {
+      log: console.log,
+      debug: console.debug,
+      info: console.info,
+      warn: console.warn,
+      error: console.error,
+    };
+
+    // Helper function to add log entry
+    const addLogEntry = (level: string, message: string) => {
+      const timestamp = new Date().toLocaleTimeString();
+      const logEntry: LogEntry = {
+        timestamp,
+        level,
+        message,
+      };
+
+      setLogs(prevLogs => {
+        const newLogs = [...prevLogs, logEntry];
+        // Keep only the last maxLogs entries to prevent memory issues
+        return newLogs.slice(-maxLogs);
+      });
+    };
+
+    // Override console methods to capture log output
+    console.log = (...args: any[]) => {
+      const message = args.map(arg => 
+        typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+      ).join(' ');
+      addLogEntry('LOG', message);
+      originalConsole.log(...args);
+    };
+
+    console.debug = (...args: any[]) => {
+      const message = args.map(arg => 
+        typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+      ).join(' ');
+      addLogEntry('DEBUG', message);
+      originalConsole.debug(...args);
+    };
+
+    console.info = (...args: any[]) => {
+      const message = args.map(arg => 
+        typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+      ).join(' ');
+      addLogEntry('INFO', message);
+      originalConsole.info(...args);
+    };
+
+    console.warn = (...args: any[]) => {
+      const message = args.map(arg => 
+        typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+      ).join(' ');
+      addLogEntry('WARN', message);
+      originalConsole.warn(...args);
+    };
+
+    console.error = (...args: any[]) => {
+      const message = args.map(arg => 
+        typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+      ).join(' ');
+      addLogEntry('ERROR', message);
+      originalConsole.error(...args);
+    };
+
+    // Cleanup: restore original console methods
+    return () => {
+      Object.assign(console, originalConsole);
+    };
+  }, [enabled, maxLogs]);
+
+  if (!enabled) {
+    return null;
+  }
+
+  const getLevelColor = (level: string): string => {
+    switch (level) {
+      case 'ERROR':
+        return 'red';
+      case 'WARN':
+        return 'yellow';
+      case 'INFO':
+        return 'blue';
+      case 'DEBUG':
+        return 'gray';
+      default:
+        return 'white';
+    }
+  };
+
+  return (
+    <Box flexDirection='column' marginTop={1} borderStyle='round' borderColor='gray' padding={1}>
+      <Text color='cyan'>📟 Console Output</Text>
+      <Text color='gray'>{'='.repeat(60)}</Text>
+      <Box flexDirection='column' height={8} overflow='hidden'>
+        {logs.length === 0 ? (
+          <Text color='gray'>Waiting for log output...</Text>
+        ) : (
+          logs.slice(-6).map((log, index) => (
+            <Text key={index} color={getLevelColor(log.level)}>
+              <Text color='gray'>[{log.timestamp}]</Text> 
+              <Text color={getLevelColor(log.level)}>[{log.level}]</Text> 
+              <Text>{log.message}</Text>
+            </Text>
+          ))
+        )}
+        {logs.length > 6 && (
+          <Text color='gray'>... and {logs.length - 6} more entries</Text>
+        )}
+      </Box>
+    </Box>
+  );
+};
 
 interface AppProps {
   flags: CLIFlags;
@@ -272,6 +398,9 @@ const MainInterface: React.FC<MainInterfaceProps> = ({ flags }) => {
           <Text color='gray'>{'='.repeat(50)}</Text>
         </Box>
       )}
+
+      {/* Console Box for Debug/Verbose logs */}
+      <ConsoleBox enabled={!!(flags.debug || flags.verbose)} />
     </Box>
   );
 };
