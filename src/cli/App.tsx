@@ -24,6 +24,13 @@ import { logger } from '../utils/logger.js';
 // Console Box component for displaying logs when verbose/debug is enabled
 interface ConsoleBoxProps {
   enabled: boolean;
+  originalConsole?: {
+    log: (...args: unknown[]) => void;
+    debug: (...args: unknown[]) => void;
+    info: (...args: unknown[]) => void;
+    warn: (...args: unknown[]) => void;
+    error: (...args: unknown[]) => void;
+  };
 }
 
 interface LogEntry {
@@ -32,23 +39,14 @@ interface LogEntry {
   message: string;
 }
 
-const ConsoleBox: React.FC<ConsoleBoxProps> = ({ enabled }) => {
+const ConsoleBox: React.FC<ConsoleBoxProps> = ({ enabled, originalConsole }) => {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [maxLogs] = useState(50); // Keep last 50 log entries
 
   useEffect(() => {
-    if (!enabled) {
+    if (!enabled || !originalConsole) {
       return;
     }
-
-    // Store original console methods
-    const originalConsole = {
-      log: console.log,
-      debug: console.debug,
-      info: console.info,
-      warn: console.warn,
-      error: console.error,
-    };
 
     // Helper function to add log entry
     const addLogEntry = (level: string, message: string) => {
@@ -67,51 +65,53 @@ const ConsoleBox: React.FC<ConsoleBoxProps> = ({ enabled }) => {
     };
 
     // Override console methods to capture log output
-    console.log = (...args: any[]) => {
+    // When ConsoleBox is active, we suppress the original console output
+    // to prevent duplicate logs appearing both above the UI and in the ConsoleBox
+    console.log = (...args: unknown[]) => {
       const message = args.map(arg => 
         typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
       ).join(' ');
       addLogEntry('LOG', message);
-      originalConsole.log(...args);
+      // Don't call original console.log - only show in ConsoleBox
     };
 
-    console.debug = (...args: any[]) => {
+    console.debug = (...args: unknown[]) => {
       const message = args.map(arg => 
         typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
       ).join(' ');
       addLogEntry('DEBUG', message);
-      originalConsole.debug(...args);
+      // Don't call original console.debug - only show in ConsoleBox
     };
 
-    console.info = (...args: any[]) => {
+    console.info = (...args: unknown[]) => {
       const message = args.map(arg => 
         typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
       ).join(' ');
       addLogEntry('INFO', message);
-      originalConsole.info(...args);
+      // Don't call original console.info - only show in ConsoleBox
     };
 
-    console.warn = (...args: any[]) => {
+    console.warn = (...args: unknown[]) => {
       const message = args.map(arg => 
         typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
       ).join(' ');
       addLogEntry('WARN', message);
-      originalConsole.warn(...args);
+      // Don't call original console.warn - only show in ConsoleBox
     };
 
-    console.error = (...args: any[]) => {
+    console.error = (...args: unknown[]) => {
       const message = args.map(arg => 
         typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
       ).join(' ');
       addLogEntry('ERROR', message);
-      originalConsole.error(...args);
+      // Don't call original console.error - only show in ConsoleBox
     };
 
     // Cleanup: restore original console methods
     return () => {
       Object.assign(console, originalConsole);
     };
-  }, [enabled, maxLogs]);
+  }, [enabled, originalConsole, maxLogs]);
 
   if (!enabled) {
     return null;
@@ -158,9 +158,16 @@ const ConsoleBox: React.FC<ConsoleBoxProps> = ({ enabled }) => {
 
 interface AppProps {
   flags: CLIFlags;
+  originalConsole?: {
+    log: (...args: unknown[]) => void;
+    debug: (...args: unknown[]) => void;
+    info: (...args: unknown[]) => void;
+    warn: (...args: unknown[]) => void;
+    error: (...args: unknown[]) => void;
+  };
 }
 
-const App: React.FC<AppProps> = ({ flags }) => {
+const App: React.FC<AppProps> = ({ flags, originalConsole }) => {
   const [actionResult, setActionResult] = useState<string | null>(null);
 
   useEffect(() => {
@@ -228,7 +235,7 @@ const App: React.FC<AppProps> = ({ flags }) => {
   }
 
   // If all checks pass, show the main interface
-  return <MainInterface flags={flags} />;
+  return <MainInterface flags={flags} originalConsole={originalConsole} />;
 };
 
 const AppHeader: React.FC = () => (
@@ -299,9 +306,16 @@ const GitErrorMessage: React.FC<GitErrorMessageProps> = ({ gitRepo, committer })
 
 interface MainInterfaceProps {
   flags: CLIFlags;
+  originalConsole?: {
+    log: (...args: unknown[]) => void;
+    debug: (...args: unknown[]) => void;
+    info: (...args: unknown[]) => void;
+    warn: (...args: unknown[]) => void;
+    error: (...args: unknown[]) => void;
+  };
 }
 
-const MainInterface: React.FC<MainInterfaceProps> = ({ flags }) => {
+const MainInterface: React.FC<MainInterfaceProps> = ({ flags, originalConsole }) => {
   const [result, setResult] = React.useState<{
     status: 'loading' | 'success' | 'error';
     content?: string;
@@ -400,7 +414,7 @@ const MainInterface: React.FC<MainInterfaceProps> = ({ flags }) => {
       )}
 
       {/* Console Box for Debug/Verbose logs */}
-      <ConsoleBox enabled={!!(flags.debug || flags.verbose)} />
+      <ConsoleBox enabled={!!(flags.debug || flags.verbose)} originalConsole={originalConsole} />
     </Box>
   );
 };

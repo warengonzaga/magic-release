@@ -173,13 +173,12 @@ class Logger {
    * Centralized helper to determine if a log level should be suppressed during UI mode
    * Critical errors always pass through to ensure system stability
    */
-  private shouldSuppressLog(level: 'debug' | 'info' | 'warn' | 'error' | 'log'): boolean {
+  private shouldSuppressLog(_level: 'debug' | 'info' | 'warn' | 'error' | 'log'): boolean {
     if (!uiStateManager.isUIMode) return false;
 
-    // Always allow critical errors and warnings through, even in UI mode
-    if (level === 'error' || level === 'warn') return false;
-
-    // Suppress debug, info, and log during UI operations
+    // In UI mode, suppress ALL logs to prevent interference with React UI
+    // The ConsoleBox component will handle displaying logs when verbose/debug is enabled
+    // This ensures logs only appear in the dedicated ConsoleBox, not above the UI
     return true;
   }
 

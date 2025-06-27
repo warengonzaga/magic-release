@@ -198,5 +198,28 @@ logger.enableUIMode();
 // no flag = production mode (warn, error only)
 logger.configureLogLevels(cli.flags.debug, cli.flags.verbose);
 
-// Render the React app with CLI flags
-render(<App flags={cli.flags as CLIFlags} />);
+// ALWAYS intercept console output during React Ink rendering to prevent logs from
+// appearing above the UI. This ensures a clean, beautiful UI experience.
+// The ConsoleBox will selectively show logs only when verbose/debug is enabled.
+const originalConsole = {
+  log: console.log,
+  debug: console.debug,
+  info: console.info,
+  warn: console.warn,
+  error: console.error,
+};
+
+// Completely suppress console output during UI rendering to maintain clean interface
+// Logs will only appear in ConsoleBox when --verbose or --debug is used
+const suppressConsole = () => {
+  // Silently discard all console output during UI mode
+};
+
+console.log = suppressConsole;
+console.debug = suppressConsole;
+console.info = suppressConsole;
+console.warn = suppressConsole;
+console.error = suppressConsole;
+
+// Render the React app with CLI flags and original console methods
+render(<App flags={cli.flags as CLIFlags} originalConsole={originalConsole} />);
