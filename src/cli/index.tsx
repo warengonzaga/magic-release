@@ -114,15 +114,6 @@ if (cli.flags['help']) {
   process.exit(0);
 }
 
-// Enable UI mode to suppress logger output during React Ink rendering
-logger.enableUIMode();
-
-// Configure log levels based on CLI flags
-// --debug = development mode (all logs)
-// --verbose = staging/test mode (info, warn, error)
-// no flag = production mode (warn, error only)
-logger.configureLogLevels(cli.flags.debug, cli.flags.verbose);
-
 // Handle immediate CLI operations that should exit
 const handleImmediateFlags = async (): Promise<boolean> => {
   const {
@@ -132,7 +123,6 @@ const handleImmediateFlags = async (): Promise<boolean> => {
     detectProviderFromKey,
     getCurrentProvider,
     setCurrentProvider,
-    listAllProviders,
   } = await import('../utils/config-store.js');
 
   // Cast cli.flags to CLIFlags for proper type handling
@@ -177,42 +167,35 @@ const handleImmediateFlags = async (): Promise<boolean> => {
     }
 
     // Handle provider operations (only if no key operations were performed)
-    if ('provider' in flags) {
-      if (flags.provider) {
-        // Switch to specific provider
-        setCurrentProvider(flags.provider as ProviderType);
-        process.stdout.write(`Switched to ${flags.provider} provider\n`);
-        return true;
-      } else {
-        // List all providers when --provider is used without argument
-        const providers = listAllProviders();
-        process.stdout.write('📋 Configured API Providers\n\n');
-        
-        providers.forEach(({ provider, hasKey, isCurrent }) => {
-          const status = hasKey ? '✅ Key configured' : '❌ No key';
-          const current = isCurrent ? ' (current)' : '';
-          const arrow = isCurrent ? '→ ' : '  ';
-          process.stdout.write(`${arrow}${provider.toUpperCase()}: ${status}${current}\n`);
-        });
-        
-        process.stdout.write('\nUse --provider <name> --set-key <key> to configure a provider\n');
-        process.stdout.write('Use --provider <name> to switch providers\n');
-        return true;
-      }
+    if ('provider' in flags && flags.provider) {
+      // Only handle provider switching here, not listing
+      // Provider listing will be handled by the React app for better UI
+      setCurrentProvider(flags.provider as ProviderType);
+      process.stdout.write(`Switched to ${flags.provider} provider\n`);
+      return true;
     }
   } catch (error) {
-    process.stderr.write(`Error: ${(error as Error).message}\n`);
+    logger.error(`Error: ${(error as Error).message}`);
     process.exit(2);
   }
 
   return false;
 };
 
+// Configure log levels based on CLI flags first
+// --debug = development mode (all logs)
+// --verbose = staging/test mode (info, warn, error)
+// no flag = production mode (warn, error only)
+logger.configureLogLevels(cli.flags.debug, cli.flags.verbose);
+
 // Handle immediate flags and exit if needed
 const shouldExit = await handleImmediateFlags();
 if (shouldExit) {
   process.exit(0);
 }
+
+// Enable UI mode to suppress logger output during React Ink rendering
+logger.enableUIMode();
 
 // Render the React app with CLI flags
 render(<App flags={cli.flags as CLIFlags} />);
