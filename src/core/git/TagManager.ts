@@ -193,11 +193,11 @@ export class TagManager {
    * Suggest next version based on conventional commits
    */
   public suggestNextVersion(currentTags: Tag[], commitTypes: string[]): VersionPlan {
-    const hasBreaking = commitTypes.some(type => type.includes('!') ?? type.includes('BREAKING'));
+    const hasBreaking = commitTypes.some(type => type.includes('!') || type.includes('BREAKING'));
     const hasFeature = commitTypes.some(
-      type => type.startsWith('feat') ?? type.startsWith('feature')
+      type => type.startsWith('feat') || type.startsWith('feature')
     );
-    const hasFix = commitTypes.some(type => type.startsWith('fix') ?? type.startsWith('bugfix'));
+    const hasFix = commitTypes.some(type => type.startsWith('fix') || type.startsWith('bugfix'));
 
     return this.planNextVersion(currentTags, hasBreaking, hasFeature, hasFix);
   }
