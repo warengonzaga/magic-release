@@ -3,7 +3,7 @@
  * Provides consistent logging throughout the application with security-first approach
  */
 
-import { LogEngine, LogMode } from '@wgtechlabs/log-engine';
+import LogEngine, { LogMode } from '@wgtechlabs/log-engine';
 
 /**
  * Singleton class to manage UI mode state with controlled access
@@ -170,20 +170,8 @@ class Logger {
     }
   }
   /**
-   * Centralized helper to determine if a log level should be suppressed during UI mode
-   * Critical errors always pass through to ensure system stability
-   */
-  private shouldSuppressLog(_level: 'debug' | 'info' | 'warn' | 'error' | 'log'): boolean {
-    if (!uiStateManager.isUIMode) return false;
-
-    // In UI mode, suppress ALL logs to prevent interference with React UI
-    // The ConsoleBox component will handle displaying logs when verbose/debug is enabled
-    // This ensures logs only appear in the dedicated ConsoleBox, not above the UI
-    return true;
-  }
-
-  /**
-   * Centralized logging wrapper that handles UI mode checks and LogEngine calls
+   * Centralized logging wrapper that handles LogEngine calls
+   * With log-engine v2.1.0, we no longer need UI mode suppression as we use output handlers
    */
   private logWithUICheck(
     level: 'debug' | 'info' | 'warn' | 'error' | 'log',
@@ -191,7 +179,8 @@ class Logger {
     data?: unknown,
     options?: { withoutRedaction?: boolean }
   ): void {
-    if (this.shouldSuppressLog(level)) return;
+    // With the new output handler feature, we can remove the UI mode suppression
+    // and let log-engine handle output redirection properly
 
     const logMethod = options?.withoutRedaction
       ? LogEngine.withoutRedaction()[level]

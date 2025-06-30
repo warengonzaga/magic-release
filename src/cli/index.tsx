@@ -7,6 +7,13 @@
 import { render } from 'ink';
 import meow from 'meow';
 import chalk from 'chalk';
+import LogEngine from '@wgtechlabs/log-engine';
+
+// IMPORTANT: Configure LogEngine immediately to prevent any console output
+// before React takes control. This prevents logs from breaking the UI layout.
+LogEngine.configure({
+  suppressConsoleOutput: true,
+});
 
 import type { CLIFlags } from '../types/index.js';
 import type { ProviderType } from '../core/llm/providers/ProviderInterface.js';
@@ -176,6 +183,7 @@ const handleImmediateFlags = async (): Promise<boolean> => {
     }
   } catch (error) {
     logger.error(`Error: ${(error as Error).message}`);
+    process.stderr.write(`Error: ${(error as Error).message}\n`);
     process.exit(2);
   }
 
@@ -188,38 +196,35 @@ if (shouldExit) {
   process.exit(0);
 }
 
-// Enable UI mode to suppress logger output during React Ink rendering
-logger.enableUIMode();
-
-// Configure log levels based on CLI flags AFTER UI mode is enabled
-// This ensures logs appear after the UI renders
+// Configure log levels based on CLI flags for the underlying LogEngine
 // --debug = development mode (all logs)
 // --verbose = staging/test mode (info, warn, error)
 // no flag = production mode (warn, error only)
-logger.configureLogLevels(cli.flags.debug, cli.flags.verbose);
 
-// ALWAYS intercept console output during React Ink rendering to prevent logs from
-// appearing above the UI. This ensures a clean, beautiful UI experience.
-// The ConsoleBox will selectively show logs only when verbose/debug is enabled.
-const originalConsole = {
-  log: console.log,
-  debug: console.debug,
-  info: console.info,
-  warn: console.warn,
-  error: console.error,
-};
+// Configure LogEngine based on flags while keeping console output suppressed
+if (cli.flags.debug || cli.flags.verbose) {
+  const { LogMode } = await import('@wgtechlabs/log-engine');
+  let logMode = LogMode.WARN; // Default
+  if (cli.flags.debug) {
+    logMode = LogMode.DEBUG;
+  } else if (cli.flags.verbose) {
+    logMode = LogMode.INFO;
+  }
 
-// Completely suppress console output during UI rendering to maintain clean interface
-// Logs will only appear in ConsoleBox when --verbose or --debug is used
-const suppressConsole = () => {
-  // Silently discard all console output during UI mode
-};
+  LogEngine.configure({
+    mode: logMode,
+    suppressConsoleOutput: true, // Keep console output suppressed
+  });
+} else {
+  // For normal mode, also suppress console output to maintain clean UI
+  const { LogMode } = await import('@wgtechlabs/log-engine');
+  LogEngine.configure({
+    mode: LogMode.WARN,
+    suppressConsoleOutput: true,
+  });
+}
 
-console.log = suppressConsole;
-console.debug = suppressConsole;
-console.info = suppressConsole;
-console.warn = suppressConsole;
-console.error = suppressConsole;
+// Note: ConsoleBox will add the outputHandler when it mounts
 
-// Render the React app with CLI flags and original console methods
-render(<App flags={cli.flags as CLIFlags} originalConsole={originalConsole} />);
+// Render the React app with CLI flags
+render(<App flags={cli.flags as CLIFlags} />);

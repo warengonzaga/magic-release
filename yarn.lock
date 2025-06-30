@@ -1938,10 +1938,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@wgtechlabs/log-engine@npm:^2.0.0":
-  version: 2.0.0
-  resolution: "@wgtechlabs/log-engine@npm:2.0.0"
-  checksum: 10c0/6cece598f029e104ab30f405bbf7bb905744c0a1980483ff19264e3ebb7f34d8e85e915a9d83619c242ee01433e30237d3a25700a581e19db3cf883a005dddc0
+"@wgtechlabs/log-engine@npm:^2.1.1":
+  version: 2.1.1
+  resolution: "@wgtechlabs/log-engine@npm:2.1.1"
+  checksum: 10c0/2baa5451d75dd57098f1381524ee725c4d27a66a49d2916a63ca37cb564ba64844b9f5ad8442d4eaedb422b576e3e1e4508039671ee4ce74c86972508df82936
   languageName: node
   linkType: hard
 
@@ -5847,7 +5847,7 @@ __metadata:
     "@types/semver": "npm:^7.7.0"
     "@typescript-eslint/eslint-plugin": "npm:^8.13.0"
     "@typescript-eslint/parser": "npm:^8.13.0"
-    "@wgtechlabs/log-engine": "npm:^2.0.0"
+    "@wgtechlabs/log-engine": "npm:^2.1.1"
     chalk: "npm:^5.3.0"
     conf: "npm:^13.0.1"
     date-fns: "npm:^4.1.0"

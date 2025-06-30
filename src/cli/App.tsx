@@ -6,7 +6,8 @@
 import { Text, Newline, Box } from 'ink';
 import BigText from 'ink-big-text';
 import Gradient from 'ink-gradient';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
+import LogEngine from '@wgtechlabs/log-engine';
 
 import type { CLIFlags } from '../types/index.js';
 import type { ProviderType } from '../core/llm/providers/ProviderInterface.js';
@@ -19,101 +20,91 @@ import {
   listAllProviders,
 } from '../utils/config-store.js';
 import { isGitRepository, isCommitterConfigured } from '../utils/errors.js';
-import { logger } from '../utils/logger.js';
 
 // Console Box component for displaying logs when verbose/debug is enabled
 interface ConsoleBoxProps {
   enabled: boolean;
-  originalConsole?: {
-    log: (...args: unknown[]) => void;
-    debug: (...args: unknown[]) => void;
-    info: (...args: unknown[]) => void;
-    warn: (...args: unknown[]) => void;
-    error: (...args: unknown[]) => void;
-  };
 }
 
 interface LogEntry {
+  id: string;
   timestamp: string;
   level: string;
   message: string;
+  data?: unknown;
 }
 
-const ConsoleBox: React.FC<ConsoleBoxProps> = ({ enabled, originalConsole }) => {
+const ConsoleBox: React.FC<ConsoleBoxProps> = React.memo(({ enabled }) => {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [maxLogs] = useState(50); // Keep last 50 log entries
+  const batchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingLogsRef = useRef<LogEntry[]>([]);
 
   useEffect(() => {
-    if (!enabled || !originalConsole) {
+    if (!enabled) {
       return;
     }
 
-    // Helper function to add log entry
-    const addLogEntry = (level: string, message: string) => {
+    // Batch log updates to reduce flickering
+    const flushPendingLogs = (): void => {
+      if (pendingLogsRef.current.length > 0) {
+        const newLogs = [...pendingLogsRef.current];
+        pendingLogsRef.current = [];
+
+        setLogs(prevLogs => {
+          const allLogs = [...prevLogs, ...newLogs];
+          // Keep only the last maxLogs entries to prevent memory issues
+          return allLogs.slice(-maxLogs);
+        });
+      }
+    };
+
+    // Helper function to add log entry from log-engine output handler
+    const addLogEntry = (level: string, message: string, data?: unknown): void => {
+      // TODO: Update when log-engine supports customizing log elements/format
+      // Future: log-engine should provide options to customize what elements are shown
+
       const timestamp = new Date().toLocaleTimeString();
       const logEntry: LogEntry = {
+        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         timestamp,
         level,
-        message,
+        message: message.trim(),
+        data,
       };
 
-      setLogs(prevLogs => {
-        const newLogs = [...prevLogs, logEntry];
-        // Keep only the last maxLogs entries to prevent memory issues
-        return newLogs.slice(-maxLogs);
+      pendingLogsRef.current.push(logEntry);
+
+      // Clear existing timeout and set a new one to batch updates
+      if (batchTimeoutRef.current) {
+        clearTimeout(batchTimeoutRef.current);
+      }
+
+      batchTimeoutRef.current = setTimeout(flushPendingLogs, 100); // Batch updates every 100ms
+    };
+
+    // Configure log-engine to use our custom output handler
+    // The CLI entry point has already configured the mode and suppressConsoleOutput
+    // We just need to add our outputHandler to capture logs for display
+    LogEngine.configure({
+      outputHandler: (level: string, message: string, data?: unknown) => {
+        // Forward logs to the ConsoleBox component
+        addLogEntry(level, message, data);
+      },
+    });
+
+    // Cleanup: reset outputHandler only (preserve other settings)
+    return (): void => {
+      if (batchTimeoutRef.current) {
+        clearTimeout(batchTimeoutRef.current);
+      }
+      LogEngine.configure({
+        outputHandler: undefined,
       });
     };
+  }, [enabled, maxLogs]);
 
-    // Override console methods to capture log output
-    // When ConsoleBox is active, we suppress the original console output
-    // to prevent duplicate logs appearing both above the UI and in the ConsoleBox
-    console.log = (...args: unknown[]) => {
-      const message = args.map(arg => 
-        typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
-      ).join(' ');
-      addLogEntry('LOG', message);
-      // Don't call original console.log - only show in ConsoleBox
-    };
-
-    console.debug = (...args: unknown[]) => {
-      const message = args.map(arg => 
-        typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
-      ).join(' ');
-      addLogEntry('DEBUG', message);
-      // Don't call original console.debug - only show in ConsoleBox
-    };
-
-    console.info = (...args: unknown[]) => {
-      const message = args.map(arg => 
-        typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
-      ).join(' ');
-      addLogEntry('INFO', message);
-      // Don't call original console.info - only show in ConsoleBox
-    };
-
-    console.warn = (...args: unknown[]) => {
-      const message = args.map(arg => 
-        typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
-      ).join(' ');
-      addLogEntry('WARN', message);
-      // Don't call original console.warn - only show in ConsoleBox
-    };
-
-    console.error = (...args: unknown[]) => {
-      const message = args.map(arg => 
-        typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
-      ).join(' ');
-      addLogEntry('ERROR', message);
-      // Don't call original console.error - only show in ConsoleBox
-    };
-
-    // Cleanup: restore original console methods
-    return () => {
-      Object.assign(console, originalConsole);
-    };
-  }, [enabled, originalConsole, maxLogs]);
-
-  if (!enabled) {
+  if (!enabled || logs.length === 0) {
     return null;
   }
 
@@ -133,41 +124,36 @@ const ConsoleBox: React.FC<ConsoleBoxProps> = ({ enabled, originalConsole }) => 
   };
 
   return (
-    <Box flexDirection='column' marginTop={1} borderStyle='round' borderColor='gray' padding={1}>
-      <Text color='cyan'>📟 Console Output</Text>
-      <Text color='gray'>{'='.repeat(60)}</Text>
-      <Box flexDirection='column' height={8} overflow='hidden'>
-        {logs.length === 0 ? (
-          <Text color='gray'>Waiting for log output...</Text>
-        ) : (
-          logs.slice(-6).map((log, index) => (
-            <Text key={index} color={getLevelColor(log.level)}>
-              <Text color='gray'>[{log.timestamp}]</Text> 
-              <Text color={getLevelColor(log.level)}>[{log.level}]</Text> 
-              <Text>{log.message}</Text>
+    <Box
+      flexDirection='column'
+      marginBottom={1}
+      borderStyle='single'
+      borderColor='gray'
+      paddingX={1}
+      height={5}
+    >
+      <Text color='cyan'>📟 Logs ({logs.length})</Text>
+      <Box flexDirection='column' height={3} overflow='hidden'>
+        {logs.slice(-3).map(log => (
+          <Text key={log.id} color={getLevelColor(log.level)}>
+            <Text color='gray'>[{log.level}]</Text>
+            <Text>
+              {' '}
+              {log.message.length > 120 ? `${log.message.substring(0, 117)}...` : log.message}
             </Text>
-          ))
-        )}
-        {logs.length > 6 && (
-          <Text color='gray'>... and {logs.length - 6} more entries</Text>
-        )}
+          </Text>
+        ))}
+        {logs.length > 3 && <Text color='gray'>+{logs.length - 3} more</Text>}
       </Box>
     </Box>
   );
-};
+});
 
 interface AppProps {
   flags: CLIFlags;
-  originalConsole?: {
-    log: (...args: unknown[]) => void;
-    debug: (...args: unknown[]) => void;
-    info: (...args: unknown[]) => void;
-    warn: (...args: unknown[]) => void;
-    error: (...args: unknown[]) => void;
-  };
 }
 
-const App: React.FC<AppProps> = ({ flags, originalConsole }) => {
+const App: React.FC<AppProps> = ({ flags }) => {
   const [actionResult, setActionResult] = useState<string | null>(null);
 
   useEffect(() => {
@@ -178,7 +164,7 @@ const App: React.FC<AppProps> = ({ flags, originalConsole }) => {
         if (flags.config || flags.init || flags.generateConfig) {
           return; // These are handled by components
         }
-        
+
         // Note: Provider operations are now handled in the CLI entry point
         // and should not reach this component
       } catch (error) {
@@ -235,7 +221,7 @@ const App: React.FC<AppProps> = ({ flags, originalConsole }) => {
   }
 
   // If all checks pass, show the main interface
-  return <MainInterface flags={flags} originalConsole={originalConsole} />;
+  return <MainInterface flags={flags} />;
 };
 
 const AppHeader: React.FC = () => (
@@ -306,16 +292,9 @@ const GitErrorMessage: React.FC<GitErrorMessageProps> = ({ gitRepo, committer })
 
 interface MainInterfaceProps {
   flags: CLIFlags;
-  originalConsole?: {
-    log: (...args: unknown[]) => void;
-    debug: (...args: unknown[]) => void;
-    info: (...args: unknown[]) => void;
-    warn: (...args: unknown[]) => void;
-    error: (...args: unknown[]) => void;
-  };
 }
 
-const MainInterface: React.FC<MainInterfaceProps> = ({ flags, originalConsole }) => {
+const MainInterface: React.FC<MainInterfaceProps> = ({ flags }) => {
   const [result, setResult] = React.useState<{
     status: 'loading' | 'success' | 'error';
     content?: string;
@@ -327,9 +306,6 @@ const MainInterface: React.FC<MainInterfaceProps> = ({ flags, originalConsole })
   React.useEffect(() => {
     const runChangelog = async (): Promise<void> => {
       try {
-        // Keep UI mode enabled during the async operation to prevent logger interference
-        logger.enableUIMode();
-
         // Import MagicRelease dynamically
         const { default: MagicRelease } = await import('../core/MagicRelease.js');
         const { getConfig } = await import('../utils/config-store.js');
@@ -356,9 +332,6 @@ const MainInterface: React.FC<MainInterfaceProps> = ({ flags, originalConsole })
           status: 'error',
           error: errorMessage,
         });
-      } finally {
-        // Ensure UI mode remains enabled to prevent further output
-        logger.enableUIMode();
       }
     };
 
@@ -367,7 +340,7 @@ const MainInterface: React.FC<MainInterfaceProps> = ({ flags, originalConsole })
 
   return (
     <Box flexDirection='column'>
-      {/* Static Header - Always at the top */}
+      {/* Static Header - Logo and branding */}
       <Box flexDirection='column' marginBottom={1}>
         <Gradient name='passion'>
           <BigText text='Magic Release' />
@@ -382,9 +355,13 @@ const MainInterface: React.FC<MainInterfaceProps> = ({ flags, originalConsole })
         <Text>{'='.repeat(60)}</Text>
       </Box>
 
+      {/* Console Box for Debug/Verbose logs - Placed below logo */}
+      <ConsoleBox enabled={Boolean(flags.debug) || Boolean(flags.verbose)} />
+
       {/* Status Section */}
       <Box flexDirection='column' marginBottom={1}>
         {flags.verbose && <Text color='gray'>• Verbose mode enabled</Text>}
+        {flags.debug && <Text color='gray'>• Debug mode enabled</Text>}
 
         {flags.dryRun && <Text color='yellow'>• Dry run mode - no files will be modified</Text>}
 
@@ -408,13 +385,10 @@ const MainInterface: React.FC<MainInterfaceProps> = ({ flags, originalConsole })
         <Box flexDirection='column' marginTop={1}>
           <Text color='yellow'>Generated changelog preview:</Text>
           <Text color='gray'>{'='.repeat(50)}</Text>
-          <Text>{result.content.substring(0, 300)}...</Text>
+          <Text>{result.content.substring(0, 800)}...</Text>
           <Text color='gray'>{'='.repeat(50)}</Text>
         </Box>
       )}
-
-      {/* Console Box for Debug/Verbose logs */}
-      <ConsoleBox enabled={!!(flags.debug || flags.verbose)} originalConsole={originalConsole} />
     </Box>
   );
 };
@@ -519,9 +493,6 @@ const InitializationInterface: React.FC = () => {
   React.useEffect(() => {
     const runChecks = async (): Promise<void> => {
       try {
-        // Ensure UI mode is enabled during async operations
-        logger.enableUIMode();
-
         const gitRepo = isGitRepository();
         const gitConfig = isCommitterConfigured();
 
@@ -550,9 +521,6 @@ const InitializationInterface: React.FC = () => {
         });
       } catch {
         setResult({ status: 'error' });
-      } finally {
-        // Ensure UI mode remains enabled
-        logger.enableUIMode();
       }
     };
 
@@ -704,9 +672,6 @@ const GenerateConfigInterface: React.FC = () => {
   React.useEffect(() => {
     const generateConfig = async (): Promise<void> => {
       try {
-        // Ensure UI mode is enabled during async operations
-        logger.enableUIMode();
-
         const { writeFileSync, existsSync } = await import('fs');
         const { join } = await import('path');
         const { generateSampleConfig, CONFIG_FILENAMES } = await import(
@@ -733,9 +698,6 @@ const GenerateConfigInterface: React.FC = () => {
         setStatus('success');
       } catch {
         setStatus('error');
-      } finally {
-        // Ensure UI mode remains enabled
-        logger.enableUIMode();
       }
     };
 
