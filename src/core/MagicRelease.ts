@@ -236,37 +236,59 @@ export class MagicRelease {
       sections: new Map(),
     };
 
-    // Categorize commits using LLM
-    for (const commit of analysis.commits) {
-      try {
-        const category = (await this.llmService.categorizeCommit(commit.message)) as ChangeType;
+    // Re-categorize commits using commit parser to get proper categorization
+    const { from, to } = this.determineCommitRange({}, analysis.tags);
+    const gitCommits = this.gitService.getCommitsBetween(from, to);
+    const categorizedCommits = this.commitParser.parseCommits(gitCommits);
 
-        if (!unreleasedEntry.sections.has(category)) {
-          unreleasedEntry.sections.set(category, []);
-        }
+    // Convert categorized commits to changelog entries
+    const categorizedChanges = new Map<
+      ChangeType,
+      Array<{
+        description: string;
+        commits: Commit[];
+        scope?: string;
+        pr?: number;
+        issues?: string[];
+      }>
+    >();
 
-        const changes = unreleasedEntry.sections.get(category);
+    // Process each category from CommitParser
+    for (const [category, categoryCommits] of categorizedCommits) {
+      // Sort commits within category by date (newest first)
+      const sortedCategoryCommits = [...categoryCommits].sort((a, b) => {
+        const dateA = a.date ?? new Date(0);
+        const dateB = b.date ?? new Date(0);
+        return dateB.getTime() - dateA.getTime();
+      });
+
+      const changes = sortedCategoryCommits.map(commit => ({
+        description: this.generateChangeDescription(commit),
+        commits: [commit],
+        ...(commit.scope && { scope: commit.scope }),
+        ...(commit.pr && { pr: commit.pr }),
+        ...(commit.issues && commit.issues.length > 0 && { issues: commit.issues }),
+      }));
+
+      categorizedChanges.set(category, changes);
+    }
+
+    // Add categorized changes to sections in Keep a Changelog order
+    const changelogOrder: ChangeType[] = [
+      'Added',
+      'Changed',
+      'Deprecated',
+      'Removed',
+      'Fixed',
+      'Security',
+    ];
+
+    for (const category of changelogOrder) {
+      if (categorizedChanges.has(category)) {
+        const changes = categorizedChanges.get(category);
         if (changes) {
-          changes.push({
-            description: this.generateChangeDescription(commit),
-            commits: [commit],
-            ...(commit.scope && { scope: commit.scope }),
-            ...(commit.pr && { pr: commit.pr }),
-            ...(commit.issues && commit.issues.length > 0 && { issues: commit.issues }),
-          });
-        }
-      } catch (error) {
-        logger.warn(`Failed to categorize commit: ${commit.hash}`, error);
-        // Default to 'Changed' category
-        if (!unreleasedEntry.sections.has('Changed')) {
-          unreleasedEntry.sections.set('Changed', []);
-        }
-        const changes = unreleasedEntry.sections.get('Changed');
-        if (changes) {
-          changes.push({
-            description: this.generateChangeDescription(commit),
-            commits: [commit],
-          });
+          // Changes are already in newest-first order from sorting
+          unreleasedEntry.sections.set(category, changes);
         }
       }
     }
@@ -277,24 +299,166 @@ export class MagicRelease {
 
   /**
    * Generate user-friendly change description from commit
+   * Converts commits to conventional commit format for better readability
    */
   private generateChangeDescription(commit: Commit): string {
     // Clean up the commit message for user consumption
     let description = commit.message;
 
-    // Remove conventional commit prefixes if present
+    // Remove conventional commit prefixes and emojis if present
     description = description.replace(
-      /^(feat|fix|docs|style|refactor|test|chore|perf)(\(.+\))?:\s*/,
+      /^(🐛|🚀|✨|📚|☕|🔧|📦|🎨|♻️|🔥|💚|👷|📝|⚡|🩹|🔒|➕|➖|📌|⬆️|⬇️|📎|🚨|🌐|💄|🍱|♿|💡|🍻|💬|🗃️|🏷️|🧱|👽|💥|🗑️|🔇)?\s*(feat|fix|docs|style|refactor|test|chore|perf|build|ci|revert)(\(.+\))?[!]?:\s*/,
       ''
     );
 
-    // Capitalize first letter
-    description = description.charAt(0).toUpperCase() + description.slice(1);
+    // Remove remaining emoji patterns at the start (including broken unicode and � characters)
+    description = description.replace(
+      /^[🐛🚀✨📚☕🔧📦🎨♻️🔥💚👷📝⚡🩹🔒➕➖📌⬆️⬇️📎🚨🌐💄🍱♿💡🍻💬🗃️🏷️🧱👽💥🗑️🔇�]+\s*/,
+      ''
+    );
 
-    // Remove trailing periods
-    description = description.replace(/\.$/, '');
+    // Remove common prefixes that don't add value
+    description = description.replace(/^(new|add|fix|update|remove|change|improve|tweak):\s*/i, '');
 
-    return description;
+    // Clean up specific patterns
+    description = description.replace(/^tweak:\s*/i, '');
+    description = description.replace(/^�\s*new:\s*/i, '');
+    description = description.replace(/^�\s*/i, '');
+
+    // Remove extra whitespace
+    description = description.trim();
+
+    // If description is empty or too short, provide a default
+    if (!description || description.length < 3) {
+      description = 'update code';
+    }
+
+    // Convert to conventional commit format based on the commit type/category
+    const conventionalType = this.getConventionalType(commit);
+    const scope = commit.scope;
+
+    // Build conventional commit message with lowercase description
+    let conventionalMessage = conventionalType;
+    if (scope) {
+      conventionalMessage += `(${scope})`;
+    }
+    
+    // Ensure description starts with lowercase (conventional commits standard)
+    const cleanDescription = description.charAt(0).toLowerCase() + description.slice(1);
+    conventionalMessage += `: ${cleanDescription}`;
+
+    // Remove any trailing periods from the final message
+    conventionalMessage = conventionalMessage.replace(/\.$/, '');
+
+    return conventionalMessage;
+  }
+
+  /**
+   * Get conventional commit type based on the commit's category or content
+   */
+  private getConventionalType(commit: Commit): string {
+    // If the commit already has a type from conventional parsing, use it
+    if (commit.type) {
+      return commit.type;
+    }
+
+    // Otherwise, analyze the commit message to determine the type
+    const message = commit.message.toLowerCase();
+    
+    // Feature-related keywords
+    if (
+      message.includes('feat') ||
+      message.includes('feature') ||
+      message.includes('add') ||
+      message.includes('new') ||
+      message.includes('initial commit')
+    ) {
+      return 'feat';
+    }
+
+    // Fix-related keywords
+    if (
+      message.includes('fix') ||
+      message.includes('bug') ||
+      message.includes('hotfix') ||
+      message.includes('patch') ||
+      message.includes('error') ||
+      message.includes('issue')
+    ) {
+      return 'fix';
+    }
+
+    // Documentation
+    if (
+      message.includes('doc') ||
+      message.includes('readme') ||
+      message.includes('comment') ||
+      message.includes('documentation')
+    ) {
+      return 'docs';
+    }
+
+    // Testing
+    if (message.includes('test') || message.includes('spec') || message.includes('coverage')) {
+      return 'test';
+    }
+
+    // Performance
+    if (
+      message.includes('perf') ||
+      message.includes('performance') ||
+      message.includes('optimize') ||
+      message.includes('speed')
+    ) {
+      return 'perf';
+    }
+
+    // Refactoring
+    if (
+      message.includes('refactor') ||
+      message.includes('restructure') ||
+      message.includes('reorganize')
+    ) {
+      return 'refactor';
+    }
+
+    // Style/formatting
+    if (
+      message.includes('style') ||
+      message.includes('format') ||
+      message.includes('lint') ||
+      message.includes('prettier')
+    ) {
+      return 'style';
+    }
+
+    // Build/CI
+    if (
+      message.includes('build') ||
+      message.includes('ci') ||
+      message.includes('deploy') ||
+      message.includes('config') ||
+      message.includes('setup')
+    ) {
+      return 'build';
+    }
+
+    // Chore (maintenance, dependencies, etc.)
+    if (
+      message.includes('chore') ||
+      message.includes('update') ||
+      message.includes('upgrade') ||
+      message.includes('bump') ||
+      message.includes('maintain') ||
+      message.includes('clean') ||
+      message.includes('remove') ||
+      message.includes('delete')
+    ) {
+      return 'chore';
+    }
+
+    // Default to 'chore' for unclassified commits
+    return 'chore';
   }
 
   /**

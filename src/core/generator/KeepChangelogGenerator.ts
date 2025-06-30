@@ -250,7 +250,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   private formatChange(change: Change): string {
     let line = `- ${change.description}`;
 
-    // Add scope if available
+    // Add scope if available and format properly
     if (change.scope) {
       line = `- **${change.scope}**: ${change.description}`;
     }
@@ -258,20 +258,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     // Add links
     const links: string[] = [];
 
-    if (this.options.includePRLinks && change.pr) {
-      links.push(`[#${change.pr}]`);
-    }
-
-    if (this.options.includeIssueLinks && change.issues && change.issues.length > 0) {
-      links.push(...change.issues.map(issue => `[#${issue}]`));
-    }
-
     if (this.options.includeCommitLinks && change.commits.length > 0) {
       // Only include first commit to avoid clutter
       const firstCommit = change.commits[0];
       if (firstCommit?.hash) {
         links.push(`[\`${firstCommit.hash.substring(0, 7)}\`]`);
       }
+    }
+
+    if (this.options.includePRLinks && change.pr) {
+      links.push(`[#${change.pr}]`);
+    }
+
+    if (this.options.includeIssueLinks && change.issues && change.issues.length > 0) {
+      links.push(...change.issues.map(issue => `[#${issue}]`));
     }
 
     if (links.length > 0) {
