@@ -17,15 +17,43 @@ export interface CommitParseResult {
   category: ChangeType;
 }
 
+/**
+ * CommitParser - Parses and categorizes Git commit messages
+ *
+ * This class handles parsing of conventional commit format and semantic analysis
+ * of commit messages to categorize them into changelog sections following
+ * the Keep a Changelog standard.
+ *
+ * @example
+ * ```typescript
+ * const parser = new CommitParser();
+ * const result = parser.parseCommit(gitCommit);
+ * console.log(result.category); // 'Added', 'Fixed', etc.
+ * ```
+ */
 export class CommitParser {
+  /** Regular expression to parse conventional commit format */
   private conventionalCommitRegex =
     /^(?<type>\w+)(?:\((?<scope>[\w\-\.\/]+)\))?\!?:\s+(?<description>.+)/;
+
+  /** Regular expression to detect breaking changes */
   private breakingChangeRegex = /BREAKING CHANGE[S]?:|!:/;
+
+  /** Regular expression to extract issue numbers */
   private issueRegex = /#(\d+)/g;
+
+  /** Regular expression to extract pull request numbers */
   private prRegex = /\(#(\d+)\)|\s#(\d+)|PR\s#(\d+)|Pull Request\s#(\d+)/gi;
 
   /**
    * Parse a single commit into structured information
+   *
+   * Analyzes a Git commit and extracts structured information including
+   * conventional commit type, scope, breaking changes, and associated
+   * issues or pull requests.
+   *
+   * @param commit - The Git commit to parse
+   * @returns Parsed commit information with categorization
    */
   public parseCommit(commit: GitCommit): CommitParseResult {
     const result: CommitParseResult = {
@@ -75,6 +103,13 @@ export class CommitParser {
 
   /**
    * Parse multiple commits and group them by category
+   *
+   * Processes an array of Git commits and organizes them into
+   * changelog categories (Added, Fixed, Changed, etc.) based on
+   * conventional commit types and semantic analysis.
+   *
+   * @param commits - Array of Git commits to parse and categorize
+   * @returns Map of changelog categories to grouped commits
    */
   public parseCommits(commits: GitCommit[]): Map<ChangeType, Commit[]> {
     const categorizedCommits = new Map<ChangeType, Commit[]>();
@@ -118,6 +153,12 @@ export class CommitParser {
 
   /**
    * Map conventional commit types to changelog categories
+   *
+   * Converts conventional commit types (feat, fix, etc.) to Keep a Changelog
+   * categories (Added, Fixed, Changed, etc.) based on semantic meaning.
+   *
+   * @param type - The conventional commit type (e.g., 'feat', 'fix')
+   * @returns The corresponding changelog category
    */
   private mapTypeToCategory(type: string): ChangeType {
     const typeMap: Record<string, ChangeType> = {
@@ -151,6 +192,13 @@ export class CommitParser {
 
   /**
    * Determine category based on commit message content (fallback)
+   *
+   * When conventional commit format is not used, this method analyzes
+   * the commit message content to determine the appropriate changelog
+   * category based on keywords and semantic analysis.
+   *
+   * @param message - The commit message to analyze
+   * @returns The determined changelog category
    */
   private determineCategory(message: string): ChangeType {
     const lowerMessage = message.toLowerCase();

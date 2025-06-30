@@ -1,7 +1,22 @@
 #!/usr/bin/env node
 /**
  * Magic Release CLI Entry Point
- * Following the same pattern as Magic Commit but with TypeScript
+ *
+ * Command-line interface for Magic Release, providing an interactive and
+ * user-friendly way to generate AI-powered changelogs. Features a modern
+ * React-based terminal UI with real-time feedback and comprehensive options.
+ *
+ * @example
+ * ```bash
+ * # Basic usage
+ * magicr
+ *
+ * # With options
+ * magicr --from v1.0.0 --to HEAD --verbose
+ *
+ * # Setup API key
+ * magicr --set-key sk-your-openai-key
+ * ```
  */
 
 import { render } from 'ink';

@@ -1,6 +1,20 @@
 /**
- * Magic Release - Main application class
- * Orchestrates all components for changelog generation
+ * MagicRelease - Main application class for AI-powered changelog generation
+ *
+ * This is the core orchestrator class that coordinates all components of Magic Release
+ * to generate professional changelogs from Git commit history using AI. It manages
+ * Git operations, commit parsing, AI processing, and changelog generation.
+ *
+ * @example
+ * ```typescript
+ * const config = await loadConfig();
+ * const magicRelease = new MagicRelease(config);
+ * const changelog = await magicRelease.generate({
+ *   from: 'v1.0.0',
+ *   to: 'HEAD',
+ *   dryRun: false
+ * });
+ * ```
  */
 
 import path from 'path';
@@ -34,15 +48,36 @@ export interface GenerateOptions {
 }
 
 export class MagicRelease {
+  /** Application configuration containing LLM and Git settings */
   private config: MagicReleaseConfig;
+
+  /** Git service for repository operations */
   private gitService: GitService;
+
+  /** Commit parser for analyzing commit messages */
   private commitParser: CommitParser;
+
+  /** Tag manager for version and release management */
   private tagManager: TagManager;
+
+  /** LLM service for AI-powered content generation */
   private llmService: LLMService;
+
+  /** Changelog generator for Keep a Changelog format */
   private changelogGenerator: KeepChangelogGenerator;
+
+  /** Changelog parser for existing changelog analysis */
   private changelogParser: ChangelogParser;
+
+  /** Current working directory */
   private cwd: string;
 
+  /**
+   * Create a new MagicRelease instance
+   *
+   * @param config - Configuration object with LLM provider and changelog settings
+   * @param cwd - Working directory (defaults to current working directory)
+   */
   constructor(config: MagicReleaseConfig, cwd: string = process.cwd()) {
     this.config = config;
     this.cwd = cwd;
@@ -64,6 +99,16 @@ export class MagicRelease {
 
   /**
    * Generate changelog based on options
+   *
+   * Main method that orchestrates the complete changelog generation process:
+   * 1. Analyzes repository structure and commits
+   * 2. Processes commits using AI for categorization
+   * 3. Generates formatted changelog content
+   * 4. Writes the changelog to file (unless in dry-run mode)
+   *
+   * @param options - Generation options including commit range and behavior flags
+   * @returns Generated changelog content as string
+   * @throws {Error} If generation fails at any stage
    */
   async generate(options: GenerateOptions = {}): Promise<string> {
     logger.info('Starting changelog generation', options);
@@ -92,6 +137,15 @@ export class MagicRelease {
 
   /**
    * Analyze repository and gather information
+   *
+   * Performs comprehensive repository analysis including:
+   * - Repository metadata extraction
+   * - Tag and version analysis
+   * - Commit retrieval and filtering
+   * - Existing changelog parsing
+   *
+   * @param options - Analysis options for commit range filtering
+   * @returns Complete repository analysis data
    */
   private async analyzeRepository(options: GenerateOptions): Promise<RepositoryAnalysis> {
     logger.debug('Analyzing repository');
@@ -376,6 +430,13 @@ export class MagicRelease {
 
   /**
    * Create Magic Release instance from CLI flags
+   *
+   * Factory method that creates a configured MagicRelease instance based on
+   * command-line flags, setting appropriate logging levels and options.
+   *
+   * @param flags - CLI flags containing user preferences
+   * @param config - Base configuration object
+   * @returns Configured MagicRelease instance
    */
   static async fromCLIFlags(flags: CLIFlags, config: MagicReleaseConfig): Promise<MagicRelease> {
     const instance = new MagicRelease(config);

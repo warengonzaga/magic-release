@@ -1,6 +1,20 @@
 /**
- * Configuration Store for MagicRelease
- * Uses conf package for secure storage, following Magic Commit's pattern
+ * Configuration Store for Magic Release
+ *
+ * Provides secure storage and management of API keys and configuration settings
+ * using the `conf` package. Handles multiple LLM providers and validates credentials.
+ *
+ * @example
+ * ```typescript
+ * // Store API key
+ * await storeAPIKey('openai', 'sk-...');
+ *
+ * // Load configuration
+ * const config = await loadConfig();
+ *
+ * // Test API key
+ * const isValid = await testAPIKey();
+ * ```
  */
 
 import Conf from 'conf';
@@ -12,21 +26,33 @@ import { ConfigError, createInvalidAPIKeyError, createMissingAPIKeyError } from 
 import { getProjectConfig } from './project-config.js';
 import { logger } from './logger.js';
 
-// Configuration interface
+/** Stored configuration interface for persistent settings */
 interface StoredConfig {
+  /** OpenAI API key */
   openai?: string;
+  /** Anthropic API key */
   anthropic?: string;
+  /** Azure OpenAI API key */
   azure?: string;
+  /** Currently selected AI provider */
   provider?: ProviderType;
+  /** AI model to use for generation */
   model?: string;
+  /** Temperature setting for AI responses */
   temperature?: number;
+  /** Maximum tokens for AI responses */
   maxTokens?: number;
-  // Azure-specific
+  // Azure-specific configuration
+  /** Azure OpenAI endpoint URL */
   azureEndpoint?: string;
+  /** Azure API version */
   azureApiVersion?: string;
+  /** Azure deployment name */
   azureDeploymentName?: string;
-  // OpenAI-specific
+  // OpenAI-specific configuration
+  /** Custom OpenAI base URL */
   openaiBaseURL?: string;
+  /** OpenAI organization ID */
   openaiOrganization?: string;
 }
 
@@ -43,6 +69,12 @@ const config = new Conf<StoredConfig>({
 
 /**
  * Validate OpenAI API key format and connectivity
+ *
+ * Performs both format validation and optional connectivity testing
+ * to ensure the API key is valid and functional.
+ *
+ * @param apiKey - The OpenAI API key to validate
+ * @returns Promise resolving to true if key is valid and functional
  */
 export const isValidOpenAIKey = async (apiKey: string): Promise<boolean> => {
   try {

@@ -26,11 +26,34 @@ export interface LLMServiceConfig {
   organization?: string; // For OpenAI
 }
 
+/**
+ * LLMService - Language Model Service for changelog generation
+ *
+ * This service orchestrates interactions with various LLM providers (OpenAI, Anthropic, Azure)
+ * to generate and categorize changelog content from Git commit data. It handles provider
+ * initialization, prompt generation, and response processing.
+ *
+ * @example
+ * ```typescript
+ * const llmService = LLMService.fromConfig(config);
+ * const changelog = await llmService.generateChangelog(commits, projectContext);
+ * ```
+ */
 export class LLMService {
+  /** The active LLM provider instance */
   private provider: BaseProvider;
+
+  /** Service configuration including provider settings */
   private config: LLMServiceConfig;
+
+  /** Prompt generator for creating LLM requests */
   private promptGenerator: ChangelogPrompt;
 
+  /**
+   * Create a new LLMService instance
+   *
+   * @param config - Configuration object containing provider settings
+   */
   constructor(config: LLMServiceConfig) {
     this.config = config;
     this.provider = this.createProvider(config);
@@ -49,6 +72,10 @@ export class LLMService {
 
   /**
    * Create LLM provider instance using the factory
+   *
+   * @param config - Service configuration containing provider type and settings
+   * @returns Configured LLM provider instance
+   * @throws {Error} If the provider type is not supported
    */
   private createProvider(config: LLMServiceConfig): BaseProvider {
     try {
@@ -82,6 +109,15 @@ export class LLMService {
 
   /**
    * Generate changelog content from commit data
+   *
+   * Processes commit information and generates a formatted changelog using the
+   * configured LLM provider. Optionally includes project context and previous
+   * changelog data for improved consistency.
+   *
+   * @param commits - Formatted commit data for processing
+   * @param projectContext - Optional project context for better categorization
+   * @param previousChangelog - Optional previous changelog for consistency
+   * @returns Generated changelog content
    */
   async generateChangelog(
     commits: string,
@@ -118,6 +154,12 @@ export class LLMService {
 
   /**
    * Categorize a single commit
+   *
+   * Uses the LLM to analyze and categorize an individual commit message
+   * into appropriate changelog sections (Added, Fixed, Changed, etc.).
+   *
+   * @param commitMessage - The commit message to categorize
+   * @returns The determined category for the commit
    */
   async categorizeCommit(commitMessage: string): Promise<string> {
     const messages: LLMMessage[] = [
@@ -143,6 +185,12 @@ export class LLMService {
 
   /**
    * Generate release summary
+   *
+   * Creates a concise summary of changelog content, highlighting
+   * the most important changes and their impact on users.
+   *
+   * @param changelogContent - The changelog content to summarize
+   * @returns Concise release summary
    */
   async generateReleaseSummary(changelogContent: string): Promise<string> {
     const messages: LLMMessage[] = [
@@ -168,6 +216,11 @@ export class LLMService {
 
   /**
    * Test the LLM connection
+   *
+   * Validates that the configured LLM provider is accessible and
+   * properly configured by sending a simple test request.
+   *
+   * @returns True if connection is successful, false otherwise
    */
   async testConnection(): Promise<boolean> {
     logger.debug('Testing LLM connection');

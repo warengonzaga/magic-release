@@ -1,6 +1,21 @@
 /**
- * MagicRelease - Main export file
- * AI-powered changelog generator following Keep a Changelog format
+ * Magic Release - AI-powered changelog generator
+ *
+ * Main export file providing public API access to Magic Release functionality.
+ * Generates professional changelogs from Git commit history using AI providers
+ * like OpenAI, Anthropic, and Azure OpenAI.
+ *
+ * @example
+ * ```typescript
+ * import { MagicReleaseConfig, loadConfig } from 'magicr';
+ *
+ * const config = await loadConfig();
+ * // Use Magic Release programmatically
+ * ```
+ *
+ * @version 0.1.0-beta
+ * @author Waren Gonzaga <opensource@warengonzaga.com>
+ * @license GPL-3.0
  */
 
 // Export types
@@ -14,10 +29,10 @@ export * from './utils/logger.js';
 // Export constants
 export * from './constants/index.js';
 
-// Export version
-export const version = '0.1.0';
+/** Current version of Magic Release */
+export const version = '0.1.0-beta';
 
-// Default export
+/** Default export containing version information */
 export default {
   version,
 };

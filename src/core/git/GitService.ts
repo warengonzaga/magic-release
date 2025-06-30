@@ -1,6 +1,16 @@
 /**
- * Git Service - Core Git operations handler
- * Handles all Git repository interactions for Magic Release
+ * GitService - Core Git operations handler
+ *
+ * This class provides a comprehensive interface for interacting with Git repositories,
+ * handling operations like commit retrieval, tag management, and repository analysis.
+ * It serves as the primary Git interface for Magic Release functionality.
+ *
+ * @example
+ * ```typescript
+ * const gitService = new GitService('/path/to/repo');
+ * const commits = gitService.getCommitsBetween('v1.0.0', 'HEAD');
+ * const tags = gitService.getTags();
+ * ```
  */
 
 import { execSync } from 'child_process';
@@ -12,8 +22,15 @@ import { createGitError, GitError } from '../../utils/errors.js';
 import { logger } from '../../utils/logger.js';
 
 export class GitService {
+  /** Working directory path for Git operations */
   private cwd: string;
 
+  /**
+   * Create a new GitService instance
+   *
+   * @param cwd - Working directory path (defaults to current working directory)
+   * @throws {GitError} If the directory is not a valid Git repository
+   */
   constructor(cwd: string = process.cwd()) {
     this.cwd = cwd;
     this.validateGitRepository();
@@ -21,6 +38,8 @@ export class GitService {
 
   /**
    * Validate that we're in a Git repository
+   *
+   * @throws {GitError} If the current directory is not a Git repository
    */
   private validateGitRepository(): void {
     const gitDir = path.join(this.cwd, '.git');
@@ -31,6 +50,10 @@ export class GitService {
 
   /**
    * Execute Git command safely
+   *
+   * @param command - Git command to execute (without 'git' prefix)
+   * @returns Command output as trimmed string
+   * @throws {GitError} If the Git command fails
    */
   private execGit(command: string): string {
     try {
@@ -53,6 +76,14 @@ export class GitService {
 
   /**
    * Get all commits between two references (tags, commits, HEAD)
+   *
+   * Retrieves Git commits in a specified range. If no 'from' reference is provided,
+   * returns all commits up to the 'to' reference.
+   *
+   * @param from - Starting reference (tag, commit hash, or branch)
+   * @param to - Ending reference (defaults to 'HEAD')
+   * @returns Array of parsed Git commits
+   * @throws {GitError} If Git command fails or references are invalid
    */
   public getCommitsBetween(from?: string, to: string = 'HEAD'): GitCommit[] {
     let range = '';
@@ -97,6 +128,12 @@ export class GitService {
 
   /**
    * Parse raw Git log output into GitCommit objects
+   *
+   * Converts the raw output from `git log` command into structured GitCommit objects
+   * with parsed author, committer, and date information.
+   *
+   * @param output - Raw Git log output string
+   * @returns Array of parsed GitCommit objects
    */
   private parseCommits(output: string): GitCommit[] {
     const commits: GitCommit[] = [];

@@ -1,6 +1,15 @@
 /**
- * Keep a Changelog Generator
- * Implements the official Keep a Changelog format (https://keepachangelog.com/)
+ * KeepChangelogGenerator - Generates changelogs following Keep a Changelog format
+ *
+ * This class implements the official Keep a Changelog format (https://keepachangelog.com/)
+ * and provides functionality to generate, merge, and format changelog entries with proper
+ * semantic versioning and categorization.
+ *
+ * @example
+ * ```typescript
+ * const generator = new KeepChangelogGenerator(config);
+ * const changelog = await generator.generate(entries, workingDir);
+ * ```
  */
 
 import { readFileSync, writeFileSync, existsSync } from 'fs';
@@ -18,9 +27,18 @@ export interface GeneratorOptions {
 }
 
 export class KeepChangelogGenerator {
+  /** Configuration object containing changelog settings */
   private config: MagicReleaseConfig;
+
+  /** Generator options for link inclusion and formatting */
   private options: GeneratorOptions;
 
+  /**
+   * Create a new KeepChangelogGenerator instance
+   *
+   * @param config - Magic Release configuration
+   * @param options - Optional generator settings for customization
+   */
   constructor(config: MagicReleaseConfig, options: GeneratorOptions = {}) {
     this.config = config;
     this.options = {
@@ -34,6 +52,14 @@ export class KeepChangelogGenerator {
 
   /**
    * Generate complete changelog from entries
+   *
+   * Creates a full changelog document following Keep a Changelog format,
+   * merging new entries with existing content and maintaining proper
+   * version ordering and section organization.
+   *
+   * @param entries - Array of changelog entries to include
+   * @param workingDir - Working directory containing the project
+   * @returns Complete formatted changelog content
    */
   async generate(entries: ChangelogEntry[], workingDir: string): Promise<string> {
     logger.debug('Generating Keep a Changelog format', {
@@ -85,6 +111,12 @@ export class KeepChangelogGenerator {
 
   /**
    * Load existing changelog file
+   *
+   * Attempts to read an existing changelog file from the working directory.
+   * Returns undefined if no changelog exists.
+   *
+   * @param workingDir - Directory to search for changelog file
+   * @returns Existing changelog content or undefined
    */
   async loadExistingChangelog(workingDir: string): Promise<string | undefined> {
     const filename = this.config.changelog?.filename ?? 'CHANGELOG.md';
