@@ -26,39 +26,33 @@ const cli = meow(
 	${chalk.cyan('🪄 MagicRelease')} - AI-powered changelog generator
 
 	Usage
-		$ magicr
+		$ magicr [options]
 
-	Options
-		--provider           Switch provider or list all providers (if no arg)
-		--set-key, -s        Set API key (auto-detects provider or uses --provider)
-		--set-key-unsafe     Set API key without validation
-		--test-key           Test if an API key is working
-		--delete-key, -d     Delete stored API key for current or specified provider
-		--config, -c         Configure settings interactively
-		--init, -i           Initialize project configuration
-		--generate-config    Generate sample .magicrrc configuration file
-		--verbose, -v        Enable verbose logging (shows info and debug)
-		--debug              Enable debug logging (shows debug only)
-		--dry-run            Preview changes without writing files
-		--from               Start from specific tag/commit
-		--to                 End at specific tag/commit
-		--help               Show help
-		--version            Show version
+	Setup Commands
+		-s, --set-key <key>      Set API key (auto-detects provider)
+		-c, --config             Configure settings interactively
+		-i, --init               Initialize project configuration
+		--provider [name]        Switch provider or list all providers
+
+	Generation Options
+		--from <tag/commit>      Start from specific tag/commit
+		--to <tag/commit>        End at specific tag/commit
+		--dry-run               Preview changes without writing files
+
+	Other Options
+		-v, --verbose           Enable verbose logging
+		--debug                 Enable debug logging
+		--help                  Show help
+		--version               Show version
 
 	Examples
-		$ magicr
-		$ magicr --set-key sk-your-openai-key            # Auto-detects OpenAI
-		$ magicr --provider anthropic --set-key your-key # Set Anthropic key
-		$ magicr --provider azure --set-key your-key     # Set Azure key
-		$ magicr --set-key-unsafe sk-your-key            # Skip validation
-		$ magicr --test-key sk-your-key                  # Test key
-		$ magicr --provider                              # List all providers
-		$ magicr --provider anthropic                    # Switch to Anthropic
-		$ magicr --config
-		$ magicr --init
-		$ magicr --generate-config                       # Create .magicrrc template
-		$ magicr --from v1.0.0 --to v2.0.0
-		$ magicr --dry-run --verbose
+		$ magicr                                    # Generate changelog
+		$ magicr --set-key sk-your-openai-key      # Setup API key
+		$ magicr --config                          # Interactive setup
+		$ magicr --from v1.0.0 --to v2.0.0        # Specific range
+		$ magicr --dry-run --verbose               # Preview with logs
+
+	For advanced options, visit: https://github.com/warengonzaga/magic-release
 `,
   {
     importMeta: import.meta,
