@@ -14,7 +14,7 @@ describe('Changelog Functionality', () => {
         '### Deprecated',
         '### Removed',
         '### Fixed',
-        '### Security'
+        '### Security',
       ];
 
       validHeaders.forEach(header => {
@@ -56,14 +56,14 @@ describe('Changelog Functionality', () => {
         { message: 'feat: add new feature', expectedType: 'feat', expectedScope: null },
         { message: 'fix(core): resolve bug', expectedType: 'fix', expectedScope: 'core' },
         { message: 'docs: update README', expectedType: 'docs', expectedScope: null },
-        { message: 'feat!: breaking change', expectedType: 'feat', expectedBreaking: true }
+        { message: 'feat!: breaking change', expectedType: 'feat', expectedBreaking: true },
       ];
 
       commits.forEach(({ message, expectedType, expectedScope, expectedBreaking }) => {
         // Simple regex parsing simulation
         const conventionalPattern = /^(\w+)(\([^)]+\))?(!?):\s*(.+)$/;
         const match = message.match(conventionalPattern);
-        
+
         expect(match).toBeTruthy();
         if (match) {
           expect(match[1]).toBe(expectedType);
@@ -79,18 +79,20 @@ describe('Changelog Functionality', () => {
 
     it('should categorize commit types', () => {
       const typeCategories = {
-        'feat': 'Added',
-        'fix': 'Fixed',
-        'docs': 'Changed',
-        'style': 'Changed',
-        'refactor': 'Changed',
-        'test': 'Changed',
-        'chore': 'Changed'
+        feat: 'Added',
+        fix: 'Fixed',
+        docs: 'Changed',
+        style: 'Changed',
+        refactor: 'Changed',
+        test: 'Changed',
+        chore: 'Changed',
       };
 
       Object.entries(typeCategories).forEach(([_type, category]) => {
         expect(category).toBeTruthy();
-        expect(['Added', 'Changed', 'Fixed', 'Removed', 'Deprecated', 'Security']).toContain(category);
+        expect(['Added', 'Changed', 'Fixed', 'Removed', 'Deprecated', 'Security']).toContain(
+          category
+        );
       });
     });
   });
@@ -98,7 +100,7 @@ describe('Changelog Functionality', () => {
   describe('Changelog Entry Generation', () => {
     it('should generate proper section headers', () => {
       const sections = ['Added', 'Changed', 'Deprecated', 'Removed', 'Fixed', 'Security'];
-      
+
       sections.forEach(section => {
         const header = `### ${section}`;
         expect(header).toBe(`### ${section}`);
@@ -110,14 +112,14 @@ describe('Changelog Functionality', () => {
       const commits = [
         { description: 'Add new feature', scope: 'core' },
         { description: 'Fix critical bug', scope: null },
-        { description: 'Update documentation', scope: 'docs' }
+        { description: 'Update documentation', scope: 'docs' },
       ];
 
       commits.forEach(commit => {
-        const entry = commit.scope 
+        const entry = commit.scope
           ? `- **${commit.scope}**: ${commit.description}`
           : `- ${commit.description}`;
-        
+
         expect(entry.startsWith('- ')).toBe(true);
         expect(entry).toContain(commit.description);
         if (commit.scope) {
@@ -130,7 +132,7 @@ describe('Changelog Functionality', () => {
       const version = '1.0.0';
       const date = '2023-01-01';
       const versionHeader = `## [${version}] - ${date}`;
-      
+
       expect(versionHeader).toBe('## [1.0.0] - 2023-01-01');
       expect(versionHeader).toContain(version);
       expect(versionHeader).toContain(date);
@@ -157,7 +159,7 @@ describe('Changelog Functionality', () => {
       const lines = sampleChangelog.split('\n');
       const versionHeaders = lines.filter(line => line.startsWith('## ['));
       const sectionHeaders = lines.filter(line => line.startsWith('### '));
-      
+
       expect(versionHeaders).toHaveLength(2);
       expect(sectionHeaders).toHaveLength(3);
       expect(versionHeaders[0]).toContain('1.0.0');
@@ -167,7 +169,7 @@ describe('Changelog Functionality', () => {
     it('should extract version information', () => {
       const versionLine = '## [1.2.3] - 2023-06-01';
       const versionMatch = versionLine.match(/## \[([^\]]+)\] - (.+)/);
-      
+
       expect(versionMatch).toBeTruthy();
       if (versionMatch) {
         expect(versionMatch[1]).toBe('1.2.3');

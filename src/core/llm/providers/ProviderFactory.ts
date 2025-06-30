@@ -8,9 +8,9 @@ import { LLMError } from '../../../utils/errors.js';
 import { logger } from '../../../utils/logger.js';
 
 import type { ProviderType } from './ProviderInterface.js';
-import { OpenAIProvider } from './OpenAIProvider.js';
-import { AnthropicProvider } from './AnthropicProvider.js';
-import { AzureProvider } from './AzureProvider.js';
+import { OpenAIProvider, type OpenAIConfig } from './OpenAIProvider.js';
+import { AnthropicProvider, type AnthropicConfig } from './AnthropicProvider.js';
+import { AzureProvider, type AzureConfig } from './AzureProvider.js';
 
 export class ProviderFactory {
   /**
@@ -25,51 +25,47 @@ export class ProviderFactory {
 
     switch (provider) {
       case 'openai': {
-        const openaiConfig = {
+        const openaiConfig: OpenAIConfig = {
           apiKey: providerConfig.apiKey ?? '',
-        } as Record<string, unknown>;
-        if (providerConfig.model) openaiConfig['model'] = providerConfig.model;
-        if (providerConfig.temperature !== undefined)
-          openaiConfig['temperature'] = providerConfig.temperature;
-        if (providerConfig.maxTokens !== undefined)
-          openaiConfig['maxTokens'] = providerConfig.maxTokens;
-        if (providerConfig.baseURL) openaiConfig['baseURL'] = providerConfig.baseURL;
-        if (providerConfig.organization) openaiConfig['organization'] = providerConfig.organization;
+          ...(providerConfig.model && { model: providerConfig.model }),
+          ...(providerConfig.temperature !== undefined && {
+            temperature: providerConfig.temperature,
+          }),
+          ...(providerConfig.maxTokens !== undefined && { maxTokens: providerConfig.maxTokens }),
+          ...(providerConfig.baseURL && { baseURL: providerConfig.baseURL }),
+          ...(providerConfig.organization && { organization: providerConfig.organization }),
+        };
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return new OpenAIProvider(openaiConfig as any);
+        return new OpenAIProvider(openaiConfig);
       }
 
       case 'anthropic': {
-        const anthropicConfig = {
+        const anthropicConfig: AnthropicConfig = {
           apiKey: providerConfig.apiKey ?? '',
-        } as Record<string, unknown>;
-        if (providerConfig.model) anthropicConfig['model'] = providerConfig.model;
-        if (providerConfig.temperature !== undefined)
-          anthropicConfig['temperature'] = providerConfig.temperature;
-        if (providerConfig.maxTokens !== undefined)
-          anthropicConfig['maxTokens'] = providerConfig.maxTokens;
+          ...(providerConfig.model && { model: providerConfig.model }),
+          ...(providerConfig.temperature !== undefined && {
+            temperature: providerConfig.temperature,
+          }),
+          ...(providerConfig.maxTokens !== undefined && { maxTokens: providerConfig.maxTokens }),
+        };
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return new AnthropicProvider(anthropicConfig as any);
+        return new AnthropicProvider(anthropicConfig);
       }
 
       case 'azure': {
-        const azureConfig = {
+        const azureConfig: AzureConfig = {
           apiKey: providerConfig.apiKey ?? '',
           endpoint: providerConfig.endpoint ?? '',
-        } as Record<string, unknown>;
-        if (providerConfig.model) azureConfig['model'] = providerConfig.model;
-        if (providerConfig.temperature !== undefined)
-          azureConfig['temperature'] = providerConfig.temperature;
-        if (providerConfig.maxTokens !== undefined)
-          azureConfig['maxTokens'] = providerConfig.maxTokens;
-        if (providerConfig.apiVersion) azureConfig['apiVersion'] = providerConfig.apiVersion;
-        if (providerConfig.deploymentName)
-          azureConfig['deploymentName'] = providerConfig.deploymentName;
+          ...(providerConfig.model && { model: providerConfig.model }),
+          ...(providerConfig.temperature !== undefined && {
+            temperature: providerConfig.temperature,
+          }),
+          ...(providerConfig.maxTokens !== undefined && { maxTokens: providerConfig.maxTokens }),
+          ...(providerConfig.apiVersion && { apiVersion: providerConfig.apiVersion }),
+          ...(providerConfig.deploymentName && { deploymentName: providerConfig.deploymentName }),
+        };
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return new AzureProvider(azureConfig as any);
+        return new AzureProvider(azureConfig);
       }
 
       default:

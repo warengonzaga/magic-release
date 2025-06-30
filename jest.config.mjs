@@ -5,9 +5,16 @@ export default {
   
   // Test file patterns
   testMatch: [
-    '**/tests/**/*.test.ts',
-    '**/tests/**/*.spec.ts',
+    '**/src/__tests__/**/*.test.ts',
+    '**/src/__tests__/**/*.spec.ts',
     '**/__tests__/**/*.ts'
+  ],
+  
+  // Ignore these files from being treated as test files
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    'src/__tests__/setup.ts',
+    'src/__tests__/globals.d.ts',
   ],
   
   // Coverage configuration
@@ -17,6 +24,7 @@ export default {
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/**/*.d.ts',
+    '!src/__tests__/**/*', // Exclude test files
     '!src/cli/**/*', // Exclude CLI components for now
     '!src/**/index.ts', // Exclude index files
     '!src/utils/config-store.ts', // Exclude due to module resolution issues
@@ -40,7 +48,8 @@ export default {
   // Module resolution
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
-    '^(.+)\\.js$': '$1'  // Map .js imports to .ts files
+    '^(\\.{1,2}/.*)\\.js$': '$1',  // Map .js imports to .ts files
+    '^src/(.*)$': '<rootDir>/src/$1'  // Handle src/ imports
   },
   
   // Handle ES modules
@@ -51,7 +60,7 @@ export default {
   extensionsToTreatAsEsm: ['.ts'],
   
   // Setup files
-  setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
+  setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup.ts'],
   
   // Timeout for tests
   testTimeout: 30000,

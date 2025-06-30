@@ -12,7 +12,7 @@ describe('Git Operations', () => {
         'git tag --list',
         'git remote -v',
         'git config user.name',
-        'git config user.email'
+        'git config user.email',
       ];
 
       gitCommands.forEach(command => {
@@ -22,10 +22,7 @@ describe('Git Operations', () => {
     });
 
     it('should check for required git configuration', () => {
-      const requiredConfigs = [
-        'user.name',
-        'user.email'
-      ];
+      const requiredConfigs = ['user.name', 'user.email'];
 
       requiredConfigs.forEach(config => {
         expect(config).toBeTruthy();
@@ -39,20 +36,40 @@ describe('Git Operations', () => {
       const testCommits = [
         {
           message: 'feat: add new authentication system',
-          expected: { type: 'feat', scope: null, description: 'add new authentication system', breaking: false }
+          expected: {
+            type: 'feat',
+            scope: null,
+            description: 'add new authentication system',
+            breaking: false,
+          },
         },
         {
           message: 'fix(api): resolve user login issue',
-          expected: { type: 'fix', scope: 'api', description: 'resolve user login issue', breaking: false }
+          expected: {
+            type: 'fix',
+            scope: 'api',
+            description: 'resolve user login issue',
+            breaking: false,
+          },
         },
         {
           message: 'feat!: migrate to new database schema',
-          expected: { type: 'feat', scope: null, description: 'migrate to new database schema', breaking: true }
+          expected: {
+            type: 'feat',
+            scope: null,
+            description: 'migrate to new database schema',
+            breaking: true,
+          },
         },
         {
           message: 'docs(readme): update installation instructions',
-          expected: { type: 'docs', scope: 'readme', description: 'update installation instructions', breaking: false }
-        }
+          expected: {
+            type: 'docs',
+            scope: 'readme',
+            description: 'update installation instructions',
+            breaking: false,
+          },
+        },
       ];
 
       testCommits.forEach(({ message, expected }) => {
@@ -65,7 +82,7 @@ describe('Git Operations', () => {
           expect(match[1]).toBe(expected.type);
           expect(match[4]).toBe(expected.description);
           expect(!!match[3]).toBe(expected.breaking);
-          
+
           if (expected.scope) {
             expect(match[2]).toBe(`(${expected.scope})`);
           } else {
@@ -77,22 +94,24 @@ describe('Git Operations', () => {
 
     it('should categorize commit types correctly', () => {
       const commitTypes = {
-        'feat': { category: 'Added', breaking: false },
-        'fix': { category: 'Fixed', breaking: false },
-        'docs': { category: 'Changed', breaking: false },
-        'style': { category: 'Changed', breaking: false },
-        'refactor': { category: 'Changed', breaking: false },
-        'perf': { category: 'Changed', breaking: false },
-        'test': { category: 'Changed', breaking: false },
-        'build': { category: 'Changed', breaking: false },
-        'ci': { category: 'Changed', breaking: false },
-        'chore': { category: 'Changed', breaking: false },
-        'revert': { category: 'Changed', breaking: false }
+        feat: { category: 'Added', breaking: false },
+        fix: { category: 'Fixed', breaking: false },
+        docs: { category: 'Changed', breaking: false },
+        style: { category: 'Changed', breaking: false },
+        refactor: { category: 'Changed', breaking: false },
+        perf: { category: 'Changed', breaking: false },
+        test: { category: 'Changed', breaking: false },
+        build: { category: 'Changed', breaking: false },
+        ci: { category: 'Changed', breaking: false },
+        chore: { category: 'Changed', breaking: false },
+        revert: { category: 'Changed', breaking: false },
       };
 
       Object.entries(commitTypes).forEach(([_type, { category }]) => {
         expect(category).toBeTruthy();
-        expect(['Added', 'Changed', 'Deprecated', 'Removed', 'Fixed', 'Security']).toContain(category);
+        expect(['Added', 'Changed', 'Deprecated', 'Removed', 'Fixed', 'Security']).toContain(
+          category
+        );
       });
     });
 
@@ -100,7 +119,7 @@ describe('Git Operations', () => {
       const breakingCommits = [
         'feat!: remove deprecated API endpoints',
         'fix(auth)!: change authentication flow',
-        'refactor!: restructure database schema'
+        'refactor!: restructure database schema',
       ];
 
       breakingCommits.forEach(message => {
@@ -112,21 +131,9 @@ describe('Git Operations', () => {
 
   describe('Tag Management', () => {
     it('should validate semantic version tags', () => {
-      const validTags = [
-        'v1.0.0',
-        'v1.2.3',
-        'v10.20.30',
-        '1.0.0',
-        '0.1.0-alpha',
-        '2.0.0-beta.1'
-      ];
+      const validTags = ['v1.0.0', 'v1.2.3', 'v10.20.30', '1.0.0', '0.1.0-alpha', '2.0.0-beta.1'];
 
-      const invalidTags = [
-        'v1.0',
-        'version-1.0.0',
-        '1.0.0.0',
-        'v1.0.0.0'
-      ];
+      const invalidTags = ['v1.0', 'version-1.0.0', '1.0.0.0', 'v1.0.0.0'];
 
       validTags.forEach(tag => {
         // Remove 'v' prefix if present for validation
@@ -166,7 +173,7 @@ describe('Git Operations', () => {
       tagPrefixes.forEach(prefix => {
         const taggedVersion = `${prefix}${baseVersion}`;
         let extractedVersion = taggedVersion;
-        
+
         if (prefix === 'v') {
           extractedVersion = taggedVersion.replace(/^v/, '');
         } else if (prefix === 'release-') {
@@ -174,7 +181,7 @@ describe('Git Operations', () => {
         } else if (prefix === 'version-') {
           extractedVersion = taggedVersion.replace(/^version-/, '');
         }
-        
+
         expect(extractedVersion).toBe(baseVersion);
       });
     });
@@ -187,14 +194,14 @@ describe('Git Operations', () => {
           hash: 'abc123',
           message: 'feat: add user authentication',
           author: 'John Doe',
-          date: '2023-06-01T10:00:00Z'
+          date: '2023-06-01T10:00:00Z',
         },
         {
           hash: 'def456',
           message: 'fix(api): resolve timeout issues',
           author: 'Jane Smith',
-          date: '2023-06-02T14:30:00Z'
-        }
+          date: '2023-06-02T14:30:00Z',
+        },
       ];
 
       sampleCommits.forEach(commit => {
@@ -210,7 +217,7 @@ describe('Git Operations', () => {
     it('should identify commit ranges', () => {
       const commitRange = 'v1.0.0..HEAD';
       const fromTo = commitRange.split('..');
-      
+
       expect(fromTo).toHaveLength(2);
       expect(fromTo[0]).toBe('v1.0.0');
       expect(fromTo[1]).toBe('HEAD');
@@ -221,7 +228,7 @@ describe('Git Operations', () => {
         { type: 'feat', message: 'feat: new feature' },
         { type: 'fix', message: 'fix: bug fix' },
         { type: 'docs', message: 'docs: update docs' },
-        { type: 'feat', message: 'feat: another feature' }
+        { type: 'feat', message: 'feat: another feature' },
       ];
 
       const features = commits.filter(commit => commit.type === 'feat');

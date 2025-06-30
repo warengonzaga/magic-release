@@ -9,14 +9,16 @@ jest.unmock('fs');
 import { promises as fs } from 'fs';
 import path from 'path';
 import { tmpdir } from 'os';
-import { rimraf } from 'rimraf';
 import { spawn } from 'child_process';
 
-import { MagicRelease } from '../../src/core/MagicRelease.js';
-import type { MagicReleaseConfig } from '../../src/types/index.js';
+import { rimraf } from 'rimraf';
+
+import { MagicRelease } from '../../core/MagicRelease.js';
+import type { MagicReleaseConfig } from '../../types/index.js';
 
 // Test constants for integration tests
-const TEST_API_KEY = 'sk-proj-abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890';
+const TEST_API_KEY =
+  'sk-proj-abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890';
 
 describe('End-to-End Integration Tests', () => {
   let testDir: string;
@@ -42,85 +44,87 @@ describe('End-to-End Integration Tests', () => {
     it('should generate changelog from git history', async () => {
       // Set up test repository with realistic commit history
       await setupRealisticRepository();
-      
+
       // Configure MagicRelease
       const config: MagicReleaseConfig = {
         llm: {
           provider: 'openai',
           model: 'gpt-3.5-turbo',
-          apiKey: TEST_API_KEY
+          apiKey: TEST_API_KEY,
         },
         git: {
           tagPattern: 'v*',
-          remote: 'origin'
+          remote: 'origin',
         },
         changelog: {
           filename: 'CHANGELOG.md',
-          includeCommitLinks: false
+          includeCommitLinks: false,
         },
         rules: {
           minCommitsForUpdate: 1,
           includePreReleases: false,
-          groupUnreleasedCommits: true
-        }
+          groupUnreleasedCommits: true,
+        },
       };
 
       // Mock LLM service response
       const originalFetch = global.fetch;
-      let callCount = 0;
       global.fetch = jest.fn().mockImplementation(async (_url, options) => {
-        callCount++;
-        const body = JSON.parse(options?.body || '{}');
-        const userMessage = body.messages?.find((m: any) => m.role === 'user')?.content || '';
-        
+        const body = JSON.parse(options?.body ?? '{}');
+        const userMessage = body.messages?.find((m: any) => m.role === 'user')?.content ?? '';
+
         // If this is a categorization request, return appropriate category
-        if (userMessage.includes('Categorize') || body.messages?.find((m: any) => m.content?.includes('categorization'))) {
+        if (
+          userMessage.includes('Categorize') ||
+          body.messages?.find((m: any) => m.content?.includes('categorization'))
+        ) {
           // Return different categories based on commit content
           if (userMessage.includes('authentication') || userMessage.includes('Add user')) {
             return {
               ok: true,
               json: async () => ({
-                choices: [{ message: { content: 'Added' } }]
-              })
+                choices: [{ message: { content: 'Added' } }],
+              }),
             };
           } else if (userMessage.includes('Update') || userMessage.includes('Improve')) {
             return {
               ok: true,
               json: async () => ({
-                choices: [{ message: { content: 'Changed' } }]
-              })
+                choices: [{ message: { content: 'Changed' } }],
+              }),
             };
           } else if (userMessage.includes('Fix') || userMessage.includes('Resolve')) {
             return {
               ok: true,
               json: async () => ({
-                choices: [{ message: { content: 'Fixed' } }]
-              })
+                choices: [{ message: { content: 'Fixed' } }],
+              }),
             };
           } else if (userMessage.includes('Remove') || userMessage.includes('deprecate')) {
             return {
               ok: true,
               json: async () => ({
-                choices: [{ message: { content: 'Removed' } }]
-              })
+                choices: [{ message: { content: 'Removed' } }],
+              }),
             };
           }
           // Default to Changed for categorization
           return {
             ok: true,
             json: async () => ({
-              choices: [{ message: { content: 'Changed' } }]
-            })
+              choices: [{ message: { content: 'Changed' } }],
+            }),
           };
         }
-        
+
         // For changelog generation requests
         return {
           ok: true,
           json: async () => ({
-            choices: [{
-              message: {
-                content: `## [2.0.0] - 2024-01-15
+            choices: [
+              {
+                message: {
+                  content: `## [2.0.0] - 2024-01-15
 
 ### Added
 - User authentication system with JWT tokens
@@ -139,20 +143,21 @@ describe('End-to-End Integration Tests', () => {
 
 ### Removed
 - Deprecated legacy API endpoints
-- Unused dependencies from package.json`
-              }
-            }]
-          })
+- Unused dependencies from package.json`,
+                },
+              },
+            ],
+          }),
         };
       });
 
       const magicRelease = new MagicRelease(config, testDir);
-      
+
       // Generate changelog
       const changelog = await magicRelease.generate({
         from: 'v1.0.0',
         to: 'HEAD',
-        dryRun: false
+        dryRun: false,
       });
 
       // Restore original fetch
@@ -166,7 +171,10 @@ describe('End-to-End Integration Tests', () => {
       expect(changelog).toContain('security');
 
       // Verify changelog file was written
-      const changelogExists = await fs.access('CHANGELOG.md').then(() => true).catch(() => false);
+      const changelogExists = await fs
+        .access('CHANGELOG.md')
+        .then(() => true)
+        .catch(() => false);
       expect(changelogExists).toBe(true);
 
       const fileContent = await fs.readFile('CHANGELOG.md', 'utf-8');
@@ -176,7 +184,7 @@ describe('End-to-End Integration Tests', () => {
     it('should handle existing changelog and preserve content', async () => {
       // Set up repository with existing changelog
       await setupRealisticRepository();
-      
+
       const existingChangelog = `# Changelog
 
 All notable changes to this project will be documented in this file.
@@ -196,77 +204,80 @@ All notable changes to this project will be documented in this file.
         llm: {
           provider: 'openai',
           model: 'gpt-3.5-turbo',
-          apiKey: TEST_API_KEY
+          apiKey: TEST_API_KEY,
         },
         git: {
           tagPattern: 'v*',
-          remote: 'origin'
+          remote: 'origin',
         },
         changelog: {
           filename: 'CHANGELOG.md',
-          includeCommitLinks: false
-        }
+          includeCommitLinks: false,
+        },
       };
 
       // Mock LLM response for new changes
       const originalFetch = global.fetch;
-      let callCount = 0;
       global.fetch = jest.fn().mockImplementation(async (_url, options) => {
-        callCount++;
-        const body = JSON.parse(options?.body || '{}');
-        const userMessage = body.messages?.find((m: any) => m.role === 'user')?.content || '';
-        
+        const body = JSON.parse(options?.body ?? '{}');
+        const userMessage = body.messages?.find((m: any) => m.role === 'user')?.content ?? '';
+
         // If this is a categorization request, return appropriate category
-        if (userMessage.includes('Categorize') || body.messages?.find((m: any) => m.content?.includes('categorization'))) {
+        if (
+          userMessage.includes('Categorize') ||
+          body.messages?.find((m: any) => m.content?.includes('categorization'))
+        ) {
           if (userMessage.includes('feature') || userMessage.includes('Add')) {
             return {
               ok: true,
               json: async () => ({
-                choices: [{ message: { content: 'Added' } }]
-              })
+                choices: [{ message: { content: 'Added' } }],
+              }),
             };
           } else if (userMessage.includes('Fix') || userMessage.includes('bug')) {
             return {
               ok: true,
               json: async () => ({
-                choices: [{ message: { content: 'Fixed' } }]
-              })
+                choices: [{ message: { content: 'Fixed' } }],
+              }),
             };
           }
           return {
             ok: true,
             json: async () => ({
-              choices: [{ message: { content: 'Changed' } }]
-            })
+              choices: [{ message: { content: 'Changed' } }],
+            }),
           };
         }
-        
+
         // For changelog generation requests
         return {
           ok: true,
           json: async () => ({
-            choices: [{
-              message: {
-                content: `## [1.1.0] - 2024-01-15
+            choices: [
+              {
+                message: {
+                  content: `## [1.1.0] - 2024-01-15
 
 ### Added
 - New feature implementations
 - Enhanced user interface
 
 ### Fixed
-- Bug fixes and improvements`
-              }
-            }]
-          })
+- Bug fixes and improvements`,
+                },
+              },
+            ],
+          }),
         };
       });
 
       const magicRelease = new MagicRelease(config, testDir);
-      
+
       await magicRelease.generate({
         from: 'v1.0.0',
         to: 'HEAD',
-        dryRun: false
+        dryRun: false,
       });
 
       // Restore original fetch
@@ -283,77 +294,79 @@ All notable changes to this project will be documented in this file.
     it('should handle different commit message formats', async () => {
       // Set up repository with various commit formats
       await setupRepositoryWithVariousCommits();
-      
+
       const config: MagicReleaseConfig = {
         llm: {
           provider: 'openai',
           model: 'gpt-3.5-turbo',
-          apiKey: TEST_API_KEY
+          apiKey: TEST_API_KEY,
         },
         git: {
           tagPattern: 'v*',
-          remote: 'origin'
+          remote: 'origin',
         },
         changelog: {
           filename: 'CHANGELOG.md',
-          includeCommitLinks: false
-        }
+          includeCommitLinks: false,
+        },
       };
 
       // Mock LLM response
       const originalFetch = global.fetch;
-      let callCount = 0;
       global.fetch = jest.fn().mockImplementation(async (_url, options) => {
-        callCount++;
-        const body = JSON.parse(options?.body || '{}');
-        const userMessage = body.messages?.find((m: any) => m.role === 'user')?.content || '';
-        
+        const body = JSON.parse(options?.body ?? '{}');
+        const userMessage = body.messages?.find((m: any) => m.role === 'user')?.content ?? '';
+
         // If this is a categorization request, return appropriate category
-        if (userMessage.includes('Categorize') || body.messages?.find((m: any) => m.content?.includes('categorization'))) {
+        if (
+          userMessage.includes('Categorize') ||
+          body.messages?.find((m: any) => m.content?.includes('categorization'))
+        ) {
           if (userMessage.includes('feat:') || userMessage.includes('Add')) {
             return {
               ok: true,
               json: async () => ({
-                choices: [{ message: { content: 'Added' } }]
-              })
+                choices: [{ message: { content: 'Added' } }],
+              }),
             };
           } else if (userMessage.includes('fix:') || userMessage.includes('Resolve')) {
             return {
               ok: true,
               json: async () => ({
-                choices: [{ message: { content: 'Fixed' } }]
-              })
+                choices: [{ message: { content: 'Fixed' } }],
+              }),
             };
           } else if (userMessage.includes('Security:')) {
             return {
               ok: true,
               json: async () => ({
-                choices: [{ message: { content: 'Security' } }]
-              })
+                choices: [{ message: { content: 'Security' } }],
+              }),
             };
           } else if (userMessage.includes('Improve')) {
             return {
               ok: true,
               json: async () => ({
-                choices: [{ message: { content: 'Changed' } }]
-              })
+                choices: [{ message: { content: 'Changed' } }],
+              }),
             };
           }
           return {
             ok: true,
             json: async () => ({
-              choices: [{ message: { content: 'Changed' } }]
-            })
+              choices: [{ message: { content: 'Changed' } }],
+            }),
           };
         }
-        
+
         // For changelog generation requests
         return {
           ok: true,
           json: async () => ({
-            choices: [{
-              message: {
-                content: `## [1.1.0] - 2024-01-15
+            choices: [
+              {
+                message: {
+                  content: `## [1.1.0] - 2024-01-15
 
 ### Added
 - Authentication system enhancements
@@ -369,17 +382,18 @@ All notable changes to this project will be documented in this file.
 - Database connection timeout problems
 
 ### Security
-- Fixed critical security vulnerability in user sessions`
-              }
-            }]
-          })
+- Fixed critical security vulnerability in user sessions`,
+                },
+              },
+            ],
+          }),
         };
       });
 
       const magicRelease = new MagicRelease(config, testDir);
-      
+
       const changelog = await magicRelease.generate({
-        dryRun: false
+        dryRun: false,
       });
 
       // Restore original fetch
@@ -395,66 +409,69 @@ All notable changes to this project will be documented in this file.
 
     it('should handle dry run mode correctly', async () => {
       await setupRealisticRepository();
-      
+
       const config: MagicReleaseConfig = {
         llm: {
           provider: 'openai',
           model: 'gpt-3.5-turbo',
-          apiKey: TEST_API_KEY
+          apiKey: TEST_API_KEY,
         },
         git: {
           tagPattern: 'v*',
-          remote: 'origin'
+          remote: 'origin',
         },
         changelog: {
           filename: 'CHANGELOG.md',
-          includeCommitLinks: false
-        }
+          includeCommitLinks: false,
+        },
       };
 
       // Mock LLM response
       const originalFetch = global.fetch;
-      let callCount = 0;
       global.fetch = jest.fn().mockImplementation(async (_url, options) => {
-        callCount++;
-        const body = JSON.parse(options?.body || '{}');
-        const userMessage = body.messages?.find((m: any) => m.role === 'user')?.content || '';
-        
+        const body = JSON.parse(options?.body ?? '{}');
+        const userMessage = body.messages?.find((m: any) => m.role === 'user')?.content ?? '';
+
         // If this is a categorization request, return appropriate category
-        if (userMessage.includes('Categorize') || body.messages?.find((m: any) => m.content?.includes('categorization'))) {
+        if (
+          userMessage.includes('Categorize') ||
+          body.messages?.find((m: any) => m.content?.includes('categorization'))
+        ) {
           if (userMessage.includes('Test feature')) {
             return {
               ok: true,
               json: async () => ({
-                choices: [{ message: { content: 'Added' } }]
-              })
+                choices: [{ message: { content: 'Added' } }],
+              }),
             };
           }
           return {
             ok: true,
             json: async () => ({
-              choices: [{ message: { content: 'Changed' } }]
-            })
+              choices: [{ message: { content: 'Changed' } }],
+            }),
           };
         }
-        
+
         // For changelog generation requests
         return {
           ok: true,
           json: async () => ({
-            choices: [{
-              message: {
-                content: `## [1.1.0] - 2024-01-15\n\n### Added\n- Test feature for dry run`
-              }
-            }]
-          })
+            choices: [
+              {
+                message: {
+                  content: `## [1.1.0] - 2024-01-15\n\n### Added\n- Test feature for dry run`,
+                },
+              },
+            ],
+          }),
         };
       });
 
       const magicRelease = new MagicRelease(config, testDir);
-      
+
       const changelog = await magicRelease.generate({
-        dryRun: true
+        dryRun: true,
       });
 
       // Restore original fetch
@@ -466,7 +483,10 @@ All notable changes to this project will be documented in this file.
       expect(changelog).toContain('authentication');
 
       // Verify no file was written in dry run mode
-      const changelogExists = await fs.access('CHANGELOG.md').then(() => true).catch(() => false);
+      const changelogExists = await fs
+        .access('CHANGELOG.md')
+        .then(() => true)
+        .catch(() => false);
       expect(changelogExists).toBe(false);
     });
   });
@@ -474,33 +494,35 @@ All notable changes to this project will be documented in this file.
   describe('Error handling', () => {
     it('should handle LLM service errors gracefully', async () => {
       await setupRealisticRepository();
-      
+
       const config: MagicReleaseConfig = {
         llm: {
           provider: 'openai',
           model: 'gpt-3.5-turbo',
-          apiKey: TEST_API_KEY // Use valid format key but mock the error response
+          apiKey: TEST_API_KEY, // Use valid format key but mock the error response
         },
         git: {
           tagPattern: 'v*',
-          remote: 'origin'
+          remote: 'origin',
         },
         changelog: {
           filename: 'CHANGELOG.md',
-          includeCommitLinks: false
-        }
+          includeCommitLinks: false,
+        },
       };
 
       // Mock LLM service error - make fetch throw an error
       const originalFetch = global.fetch;
-      global.fetch = jest.fn().mockRejectedValue(new Error('Network error - API service unavailable'));
+      global.fetch = jest
+        .fn()
+        .mockRejectedValue(new Error('Network error - API service unavailable'));
 
       const magicRelease = new MagicRelease(config, testDir);
-      
+
       // The application should handle LLM errors gracefully and still generate a changelog
       // with fallback categorization (all commits go to "Changed" section)
       const changelog = await magicRelease.generate();
-      
+
       expect(changelog).toContain('# Changelog');
       expect(changelog).toContain('## [Unreleased]');
       // When LLM fails, commits should still be included, likely in "Changed" section
@@ -512,21 +534,21 @@ All notable changes to this project will be documented in this file.
 
     it('should handle repositories with no commits', async () => {
       // Don't add any commits to the repository
-      
+
       const config: MagicReleaseConfig = {
         llm: {
           provider: 'openai',
           model: 'gpt-3.5-turbo',
-          apiKey: TEST_API_KEY
+          apiKey: TEST_API_KEY,
         },
         git: {
           tagPattern: 'v*',
-          remote: 'origin'
+          remote: 'origin',
         },
         changelog: {
           filename: 'CHANGELOG.md',
-          includeCommitLinks: false
-        }
+          includeCommitLinks: false,
+        },
       };
 
       // Mock LLM response for empty changelog
@@ -534,27 +556,29 @@ All notable changes to this project will be documented in this file.
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
-          choices: [{
-            message: {
-              content: `# Changelog
+          choices: [
+            {
+              message: {
+                content: `# Changelog
 
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-`
-            }
-          }]
-        })
+`,
+              },
+            },
+          ],
+        }),
       });
 
       const magicRelease = new MagicRelease(config, testDir);
-      
+
       // The application should handle empty repositories gracefully, not throw
       const changelog = await magicRelease.generate();
       expect(changelog).toContain('# Changelog');
       expect(changelog).toContain('Keep a Changelog');
-      
+
       // Restore original fetch
       global.fetch = originalFetch;
     });
@@ -565,8 +589,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 async function execCommand(command: string, args: string[]): Promise<void> {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, { stdio: 'pipe' });
-    
-    child.on('close', (code) => {
+
+    child.on('close', code => {
       if (code === 0) {
         resolve();
       } else {
@@ -578,16 +602,23 @@ async function execCommand(command: string, args: string[]): Promise<void> {
 
 async function setupRealisticRepository(): Promise<void> {
   // Create package.json
-  await fs.writeFile('package.json', JSON.stringify({
-    name: 'test-project',
-    version: '2.0.0',
-    description: 'A test project for MagicRelease integration testing',
-    main: 'index.js',
-    repository: {
-      type: 'git',
-      url: 'https://github.com/test/test-project.git'
-    }
-  }, null, 2));
+  await fs.writeFile(
+    'package.json',
+    JSON.stringify(
+      {
+        name: 'test-project',
+        version: '2.0.0',
+        description: 'A test project for MagicRelease integration testing',
+        main: 'index.js',
+        repository: {
+          type: 'git',
+          url: 'https://github.com/test/test-project.git',
+        },
+      },
+      null,
+      2
+    )
+  );
 
   // Create initial commit and tag
   await fs.writeFile('README.md', '# Test Project\n\nInitial setup.');
@@ -599,31 +630,69 @@ async function setupRealisticRepository(): Promise<void> {
   await fs.mkdir('src', { recursive: true });
   await fs.writeFile('src/auth.js', 'export const auth = { login: () => {}, logout: () => {} };');
   await execCommand('git', ['add', 'src/auth.js']);
-  await execCommand('git', ['commit', '-m', 'feat: add user authentication system with JWT tokens']);
+  await execCommand('git', [
+    'commit',
+    '-m',
+    'feat: add user authentication system with JWT tokens',
+  ]);
 
-  await fs.writeFile('src/search.js', 'export const search = { query: () => {}, filter: () => {} };');
+  await fs.writeFile(
+    'src/search.js',
+    'export const search = { query: () => {}, filter: () => {} };'
+  );
   await execCommand('git', ['add', 'src/search.js']);
-  await execCommand('git', ['commit', '-m', 'feat: implement advanced search functionality with filters']);
+  await execCommand('git', [
+    'commit',
+    '-m',
+    'feat: implement advanced search functionality with filters',
+  ]);
 
-  await fs.writeFile('src/notifications.js', 'export const notifications = { send: () => {}, receive: () => {} };');
+  await fs.writeFile(
+    'src/notifications.js',
+    'export const notifications = { send: () => {}, receive: () => {} };'
+  );
   await execCommand('git', ['add', 'src/notifications.js']);
-  await execCommand('git', ['commit', '-m', 'feat: add real-time notifications for user activities']);
+  await execCommand('git', [
+    'commit',
+    '-m',
+    'feat: add real-time notifications for user activities',
+  ]);
 
   // Add improvement commits
-  await fs.writeFile('src/api.js', 'export const api = { get: () => {}, post: () => {}, put: () => {}, delete: () => {} };');
+  await fs.writeFile(
+    'src/api.js',
+    'export const api = { get: () => {}, post: () => {}, put: () => {}, delete: () => {} };'
+  );
   await execCommand('git', ['add', 'src/api.js']);
-  await execCommand('git', ['commit', '-m', 'refactor: update API endpoints for better REST compliance']);
+  await execCommand('git', [
+    'commit',
+    '-m',
+    'refactor: update API endpoints for better REST compliance',
+  ]);
 
-  await fs.writeFile('src/database.js', 'export const db = { query: () => {}, optimize: () => {} };');
+  await fs.writeFile(
+    'src/database.js',
+    'export const db = { query: () => {}, optimize: () => {} };'
+  );
   await execCommand('git', ['add', 'src/database.js']);
   await execCommand('git', ['commit', '-m', 'perf: improve database query performance by 50%']);
 
   // Add bug fix commits
-  await fs.writeFile('src/security.js', 'export const security = { validateSession: () => {}, encrypt: () => {} };');
+  await fs.writeFile(
+    'src/security.js',
+    'export const security = { validateSession: () => {}, encrypt: () => {} };'
+  );
   await execCommand('git', ['add', 'src/security.js']);
-  await execCommand('git', ['commit', '-m', 'fix: resolve critical security vulnerability in user sessions']);
+  await execCommand('git', [
+    'commit',
+    '-m',
+    'fix: resolve critical security vulnerability in user sessions',
+  ]);
 
-  await fs.writeFile('src/memory.js', 'export const memory = { allocate: () => {}, deallocate: () => {} };');
+  await fs.writeFile(
+    'src/memory.js',
+    'export const memory = { allocate: () => {}, deallocate: () => {} };'
+  );
   await execCommand('git', ['add', 'src/memory.js']);
   await execCommand('git', ['commit', '-m', 'fix: prevent memory leak in background processing']);
 
@@ -635,11 +704,18 @@ async function setupRealisticRepository(): Promise<void> {
 
 async function setupRepositoryWithVariousCommits(): Promise<void> {
   // Create package.json
-  await fs.writeFile('package.json', JSON.stringify({
-    name: 'test-project-various',
-    version: '1.1.0',
-    description: 'Test project with various commit formats'
-  }, null, 2));
+  await fs.writeFile(
+    'package.json',
+    JSON.stringify(
+      {
+        name: 'test-project-various',
+        version: '1.1.0',
+        description: 'Test project with various commit formats',
+      },
+      null,
+      2
+    )
+  );
 
   // Create initial commit
   await fs.writeFile('README.md', '# Test Project\n');
@@ -664,12 +740,20 @@ async function setupRepositoryWithVariousCommits(): Promise<void> {
   // Breaking change
   await fs.writeFile('src/api.js', 'export const api = { v2: {} };');
   await execCommand('git', ['add', 'src/api.js']);
-  await execCommand('git', ['commit', '-m', 'feat!: update API response format\n\nBREAKING CHANGE: API now returns data in different format']);
+  await execCommand('git', [
+    'commit',
+    '-m',
+    'feat!: update API response format\n\nBREAKING CHANGE: API now returns data in different format',
+  ]);
 
   // Security fix
   await fs.writeFile('src/security.js', 'export const security = { hash: () => {} };');
   await execCommand('git', ['add', 'src/security.js']);
-  await execCommand('git', ['commit', '-m', 'security: fix critical vulnerability in user sessions']);
+  await execCommand('git', [
+    'commit',
+    '-m',
+    'security: fix critical vulnerability in user sessions',
+  ]);
 
   // Performance improvement
   await fs.writeFile('src/db.js', 'export const db = { index: true };');

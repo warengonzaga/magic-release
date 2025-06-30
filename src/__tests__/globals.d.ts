@@ -4,7 +4,7 @@
 declare global {
   function mockAPIResponse(status: number, data: any): void;
   function mockAPIError(error: Error): void;
-  
+
   var TEST_CONSTANTS: {
     VALID_OPENAI_KEY: string;
     VALID_ANTHROPIC_KEY: string;

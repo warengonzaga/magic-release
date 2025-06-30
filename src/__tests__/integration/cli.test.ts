@@ -10,13 +10,15 @@ import { spawn } from 'child_process';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { tmpdir } from 'os';
+
 import { rimraf } from 'rimraf';
 
-const PROJECT_ROOT = path.resolve(__dirname, '../../');
+const PROJECT_ROOT = path.resolve(__dirname, '../../../');
 const CLI_PATH = path.join(PROJECT_ROOT, 'dist/cli/index.js');
 
 // Test constants for integration tests
-const TEST_API_KEY = 'sk-proj-abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890';
+const TEST_API_KEY =
+  'sk-proj-abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890';
 
 describe('CLI Integration Tests', () => {
   let testDir: string;
@@ -41,7 +43,7 @@ describe('CLI Integration Tests', () => {
   describe('--help flag', () => {
     it('should display help information', async () => {
       const result = await runCLI(['--help']);
-      expect(result.stdout).toContain('MagicRelease');
+      expect(result.stdout).toContain('Magic Release');
       expect(result.stdout).toContain('Usage');
       expect(result.stdout).toContain('Options');
       expect(result.stdout).toContain('Examples');
@@ -59,10 +61,13 @@ describe('CLI Integration Tests', () => {
     it('should generate a sample configuration file', async () => {
       const result = await runCLI(['--generate-config']);
       expect(result.exitCode).toBe(0);
-      
-      const configExists = await fs.access('.magicrrc').then(() => true).catch(() => false);
+
+      const configExists = await fs
+        .access('.magicrrc')
+        .then(() => true)
+        .catch(() => false);
       expect(configExists).toBe(true);
-      
+
       const configContent = await fs.readFile('.magicrrc', 'utf-8');
       const config = JSON.parse(configContent);
       expect(config).toHaveProperty('llm');
@@ -93,7 +98,7 @@ describe('CLI Integration Tests', () => {
     it('should handle deleting API key', async () => {
       // First set a key
       await runCLI(['--set-key-unsafe', TEST_API_KEY]);
-      
+
       // Then delete it
       const result = await runCLI(['--delete-key']);
       expect(result.exitCode).toBe(0);
@@ -105,10 +110,10 @@ describe('CLI Integration Tests', () => {
     it('should show error when not in git repository', async () => {
       // Remove git directory
       await rimraf('.git');
-      
+
       // Set up API key first
       await runCLI(['--set-api-key-unsafe', TEST_API_KEY]);
-      
+
       const result = await runCLI([]);
       // The CLI might handle this gracefully and show empty changelog
       // Let's check that it doesn't crash and shows some output
@@ -120,10 +125,10 @@ describe('CLI Integration Tests', () => {
       // Unset git user
       await execCommand('git', ['config', '--unset', 'user.name']);
       await execCommand('git', ['config', '--unset', 'user.email']);
-      
+
       // Set up API key first
       await runCLI(['--set-api-key-unsafe', 'test-key']);
-      
+
       const result = await runCLI([]);
       // The CLI should handle this gracefully
       expect(result.exitCode).toBeGreaterThanOrEqual(0);
@@ -144,34 +149,40 @@ describe('CLI Integration Tests', () => {
     it('should run in dry-run mode without writing files', async () => {
       // Set up test repository with commits
       await setupTestRepository();
-      
+
       // Set up API key first - use the correct flag
       await runCLI(['--set-key-unsafe', TEST_API_KEY]);
-      
+
       // Mock LLM service response
       const originalFetch = global.fetch;
-      
+
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
-          choices: [{
-            message: {
-              content: '## [1.1.0] - 2024-01-15\n\n### Added\n- New feature implementation\n\n### Fixed\n- Bug fixes and improvements'
-            }
-          }]
-        })
+          choices: [
+            {
+              message: {
+                content:
+                  '## [1.1.0] - 2024-01-15\n\n### Added\n- New feature implementation\n\n### Fixed\n- Bug fixes and improvements',
+              },
+            },
+          ],
+        }),
       });
 
       const result = await runCLI(['--dry-run']);
-      
+
       // Restore original fetch
       global.fetch = originalFetch;
-      
+
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('Dry run mode - no files will be modified');
-      
+
       // Verify no CHANGELOG.md was created
-      const changelogExists = await fs.access('CHANGELOG.md').then(() => true).catch(() => false);
+      const changelogExists = await fs
+        .access('CHANGELOG.md')
+        .then(() => true)
+        .catch(() => false);
       expect(changelogExists).toBe(false);
     });
   });
@@ -180,28 +191,30 @@ describe('CLI Integration Tests', () => {
     it('should generate changelog for specific commit range', async () => {
       // Set up test repository with tagged commits
       await setupTestRepositoryWithTags();
-      
+
       // Set up API key
       await runCLI(['--set-key-unsafe', TEST_API_KEY]);
-      
+
       // Mock the LLM service response
       const originalFetch = global.fetch;
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
-          choices: [{
-            message: {
-              content: '## [1.1.0] - 2024-01-15\n\n### Added\n- New feature from commit range'
-            }
-          }]
-        })
+          choices: [
+            {
+              message: {
+                content: '## [1.1.0] - 2024-01-15\n\n### Added\n- New feature from commit range',
+              },
+            },
+          ],
+        }),
       });
 
       const result = await runCLI(['--from', 'v1.0.0', '--to', 'v1.1.0', '--dry-run']);
-      
+
       // Restore original fetch
       global.fetch = originalFetch;
-      
+
       expect(result.exitCode).toBe(0);
       // Check for actual changelog content in the output instead of specific mock text
       expect(result.stdout).toContain('## [Unreleased]');
@@ -212,25 +225,27 @@ describe('CLI Integration Tests', () => {
     it('should provide verbose output when flag is set', async () => {
       await setupTestRepository();
       await runCLI(['--set-key-unsafe', TEST_API_KEY]);
-      
+
       // Mock the LLM service response
       const originalFetch = global.fetch;
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
-          choices: [{
-            message: {
-              content: '## [1.1.0] - 2024-01-15\n\n### Added\n- Test feature'
-            }
-          }]
-        })
+          choices: [
+            {
+              message: {
+                content: '## [1.1.0] - 2024-01-15\n\n### Added\n- Test feature',
+              },
+            },
+          ],
+        }),
       });
 
       const result = await runCLI(['--verbose', '--dry-run']);
-      
+
       // Restore original fetch
       global.fetch = originalFetch;
-      
+
       expect(result.exitCode).toBe(0);
       // Verbose output should contain verbose mode indicator
       expect(result.stdout).toContain('Verbose mode enabled');
@@ -244,28 +259,28 @@ async function runCLI(args: string[] = []): Promise<{
   stdout: string;
   stderr: string;
 }> {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     const child = spawn('node', [CLI_PATH, ...args], {
       stdio: ['pipe', 'pipe', 'pipe'],
-      env: { ...process.env, NODE_ENV: 'test' }
+      env: { ...process.env, NODE_ENV: 'test' },
     });
 
     let stdout = '';
     let stderr = '';
 
-    child.stdout?.on('data', (data) => {
+    child.stdout?.on('data', data => {
       stdout += data.toString();
     });
 
-    child.stderr?.on('data', (data) => {
+    child.stderr?.on('data', data => {
       stderr += data.toString();
     });
 
-    child.on('close', (code) => {
+    child.on('close', code => {
       resolve({
-        exitCode: code || 0,
+        exitCode: code ?? 0,
         stdout,
-        stderr
+        stderr,
       });
     });
   });
@@ -274,8 +289,8 @@ async function runCLI(args: string[] = []): Promise<{
 async function execCommand(command: string, args: string[]): Promise<void> {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, { stdio: 'pipe' });
-    
-    child.on('close', (code) => {
+
+    child.on('close', code => {
       if (code === 0) {
         resolve();
       } else {
@@ -287,11 +302,18 @@ async function execCommand(command: string, args: string[]): Promise<void> {
 
 async function setupTestRepository(): Promise<void> {
   // Create a basic package.json
-  await fs.writeFile('package.json', JSON.stringify({
-    name: 'test-package',
-    version: '1.0.0',
-    description: 'Test package for integration tests'
-  }, null, 2));
+  await fs.writeFile(
+    'package.json',
+    JSON.stringify(
+      {
+        name: 'test-package',
+        version: '1.0.0',
+        description: 'Test package for integration tests',
+      },
+      null,
+      2
+    )
+  );
 
   // Create some test files and commits
   await fs.writeFile('README.md', '# Test Project\n\nThis is a test project.');
@@ -311,19 +333,19 @@ async function setupTestRepository(): Promise<void> {
 
 async function setupTestRepositoryWithTags(): Promise<void> {
   await setupTestRepository();
-  
+
   // Create initial tag
   await execCommand('git', ['tag', 'v1.0.0']);
-  
+
   // Add more commits
   await fs.writeFile('src/feature.js', 'export const feature = {};');
   await execCommand('git', ['add', 'src/feature.js']);
   await execCommand('git', ['commit', '-m', 'feat: add new feature']);
-  
+
   await fs.writeFile('src/bugfix.js', 'export const bugfix = {};');
   await execCommand('git', ['add', 'src/bugfix.js']);
   await execCommand('git', ['commit', '-m', 'fix: resolve critical bug']);
-  
+
   // Create second tag
   await execCommand('git', ['tag', 'v1.1.0']);
 }

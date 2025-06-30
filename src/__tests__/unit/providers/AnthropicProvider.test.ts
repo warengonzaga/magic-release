@@ -5,8 +5,8 @@
  * Tests Claude API integration and provider functionality
  */
 
-import { AnthropicProvider } from '../../../src/core/llm/providers/AnthropicProvider';
-import { APIKeyError } from '../../../src/utils/errors';
+import { AnthropicProvider } from '../../../core/llm/providers/AnthropicProvider';
+import { APIKeyError } from '../../../utils/errors';
 
 // Mock fetch globally
 global.fetch = jest.fn();
@@ -16,7 +16,7 @@ describe('AnthropicProvider', () => {
     apiKey: TEST_CONSTANTS.VALID_ANTHROPIC_KEY,
     model: 'claude-3-haiku-20240307',
     temperature: 0.1,
-    maxTokens: 1000
+    maxTokens: 1000,
   };
 
   let provider: AnthropicProvider;
@@ -36,14 +36,14 @@ describe('AnthropicProvider', () => {
       expect(() => {
         new AnthropicProvider({
           ...validConfig,
-          apiKey: 'invalid-key'
+          apiKey: 'invalid-key',
         });
       }).toThrow(APIKeyError);
     });
 
     it('should set default model if not provided', () => {
       const providerWithDefaults = new AnthropicProvider({
-        apiKey: TEST_CONSTANTS.VALID_ANTHROPIC_KEY
+        apiKey: TEST_CONSTANTS.VALID_ANTHROPIC_KEY,
       });
       expect(providerWithDefaults.getAvailableModels()).toContain('claude-3-haiku');
     });
@@ -62,7 +62,7 @@ describe('AnthropicProvider', () => {
         'invalid',
         'sk-short',
         'sk-openai1234567890abcdef1234567890abcdef123456', // OpenAI format
-        'ant-1234567890abcdef12345' // wrong prefix
+        'ant-1234567890abcdef12345', // wrong prefix
       ];
 
       for (const key of invalidKeys) {
@@ -85,8 +85,8 @@ describe('AnthropicProvider', () => {
         stop_sequence: null,
         usage: {
           input_tokens: 10,
-          output_tokens: 5
-        }
+          output_tokens: 5,
+        },
       });
 
       const result = await provider.testConnection();
@@ -96,7 +96,7 @@ describe('AnthropicProvider', () => {
 
     it('should handle unauthorized response', async () => {
       mockAPIResponse(401, {
-        error: { message: 'Invalid API key' }
+        error: { message: 'Invalid API key' },
       });
 
       const result = await provider.testConnection();
@@ -116,19 +116,19 @@ describe('AnthropicProvider', () => {
       mockAPIResponse(200, {
         id: 'msg_test123',
         content: [{ type: 'text', text: 'Hello!' }],
-        usage: { input_tokens: 10, output_tokens: 5 }
+        usage: { input_tokens: 10, output_tokens: 5 },
       });
 
       const customKey = 'sk-ant-custom1234567890abcdef1234567890abcdef123456';
       const result = await provider.testConnection(customKey);
-      
+
       expect(result.valid).toBe(true);
       expect(fetch).toHaveBeenCalledWith(
         'https://api.anthropic.com/v1/messages',
         expect.objectContaining({
           headers: expect.objectContaining({
-            'x-api-key': customKey
-          })
+            'x-api-key': customKey,
+          }),
         })
       );
     });
@@ -137,7 +137,7 @@ describe('AnthropicProvider', () => {
   describe('Generate Completion', () => {
     const sampleMessages = [
       { role: 'system' as const, content: 'You are a helpful assistant.' },
-      { role: 'user' as const, content: 'Generate a changelog entry.' }
+      { role: 'user' as const, content: 'Generate a changelog entry.' },
     ];
 
     it('should generate completion successfully', async () => {
@@ -145,17 +145,19 @@ describe('AnthropicProvider', () => {
         id: 'msg_test123',
         type: 'message',
         role: 'assistant',
-        content: [{
-          type: 'text',
-          text: '## [1.0.0] - 2023-01-01\n\n### Added\n- New feature'
-        }],
+        content: [
+          {
+            type: 'text',
+            text: '## [1.0.0] - 2023-01-01\n\n### Added\n- New feature',
+          },
+        ],
         model: 'claude-3-haiku-20240307',
         stop_reason: 'end_turn',
         stop_sequence: null,
         usage: {
           input_tokens: 50,
-          output_tokens: 25
-        }
+          output_tokens: 25,
+        },
       };
 
       mockAPIResponse(200, mockResponse);
@@ -171,7 +173,7 @@ describe('AnthropicProvider', () => {
     it('should handle system messages correctly', async () => {
       const mockResponse = {
         content: [{ type: 'text', text: 'Response' }],
-        usage: { input_tokens: 20, output_tokens: 10 }
+        usage: { input_tokens: 20, output_tokens: 10 },
       };
 
       mockAPIResponse(200, mockResponse);
@@ -181,43 +183,43 @@ describe('AnthropicProvider', () => {
       expect(fetch).toHaveBeenCalledWith(
         'https://api.anthropic.com/v1/messages',
         expect.objectContaining({
-          body: expect.stringContaining('"system":"You are a helpful assistant."')
+          body: expect.stringContaining('"system":"You are a helpful assistant."'),
         })
       );
     });
 
     it('should handle API errors during completion', async () => {
       mockAPIResponse(429, {
-        error: { message: 'Rate limit exceeded' }
+        error: { message: 'Rate limit exceeded' },
       });
 
-      await expect(provider.generateCompletion(sampleMessages))
-        .rejects.toThrow('Anthropic API error: 429');
+      await expect(provider.generateCompletion(sampleMessages)).rejects.toThrow(
+        'Anthropic API error: 429'
+      );
     });
 
     it('should handle empty content response', async () => {
       mockAPIResponse(200, {
-        content: []
+        content: [],
       });
 
-      await expect(provider.generateCompletion(sampleMessages))
-        .rejects.toThrow('No content returned from Anthropic API');
+      await expect(provider.generateCompletion(sampleMessages)).rejects.toThrow(
+        'No content returned from Anthropic API'
+      );
     });
 
     it('should validate messages before sending', async () => {
-      const invalidMessages = [
-        { role: 'invalid' as any, content: 'test' }
-      ];
+      const invalidMessages = [{ role: 'invalid' as any, content: 'test' }];
 
-      await expect(provider.generateCompletion(invalidMessages))
-        .rejects.toThrow('Invalid message role');
+      await expect(provider.generateCompletion(invalidMessages)).rejects.toThrow(
+        'Invalid message role'
+      );
     });
 
     it('should handle timeout', async () => {
       mockAPIError(new Error('AbortError'));
 
-      await expect(provider.generateCompletion(sampleMessages))
-        .rejects.toThrow('AbortError');
+      await expect(provider.generateCompletion(sampleMessages)).rejects.toThrow('AbortError');
     });
   });
 
@@ -242,12 +244,12 @@ describe('AnthropicProvider', () => {
         { role: 'system' as const, content: 'You are helpful.' },
         { role: 'user' as const, content: 'Hello' },
         { role: 'assistant' as const, content: 'Hi there!' },
-        { role: 'user' as const, content: 'Generate changelog' }
+        { role: 'user' as const, content: 'Generate changelog' },
       ];
 
       mockAPIResponse(200, {
         content: [{ type: 'text', text: 'Response' }],
-        usage: { input_tokens: 20, output_tokens: 10 }
+        usage: { input_tokens: 20, output_tokens: 10 },
       });
 
       await provider.generateCompletion(messages);
@@ -257,12 +259,12 @@ describe('AnthropicProvider', () => {
 
       // Should separate system message
       expect(requestBody.system).toBe('You are helpful.');
-      
+
       // Should convert other messages
       expect(requestBody.messages).toEqual([
         { role: 'user', content: 'Hello' },
         { role: 'assistant', content: 'Hi there!' },
-        { role: 'user', content: 'Generate changelog' }
+        { role: 'user', content: 'Generate changelog' },
       ]);
     });
   });
@@ -271,12 +273,10 @@ describe('AnthropicProvider', () => {
     it('should include correct headers', async () => {
       mockAPIResponse(200, {
         content: [{ type: 'text', text: 'Response' }],
-        usage: { input_tokens: 20, output_tokens: 10 }
+        usage: { input_tokens: 20, output_tokens: 10 },
       });
 
-      await provider.generateCompletion([
-        { role: 'user', content: 'test' }
-      ]);
+      await provider.generateCompletion([{ role: 'user', content: 'test' }]);
 
       expect(fetch).toHaveBeenCalledWith(
         'https://api.anthropic.com/v1/messages',
@@ -285,8 +285,8 @@ describe('AnthropicProvider', () => {
             'Content-Type': 'application/json',
             'x-api-key': TEST_CONSTANTS.VALID_ANTHROPIC_KEY,
             'anthropic-version': '2023-06-01',
-            'User-Agent': 'MagicRelease/1.0.0'
-          })
+            'User-Agent': 'MagicRelease/1.0.0',
+          }),
         })
       );
     });

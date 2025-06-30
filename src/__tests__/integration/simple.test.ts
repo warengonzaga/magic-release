@@ -6,18 +6,21 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { tmpdir } from 'os';
-import { rimraf } from 'rimraf';
 import { spawn } from 'child_process';
 
-import { MagicRelease } from '../../src/core/MagicRelease.js';
-import type { MagicReleaseConfig } from '../../src/types/index.js';
+import { rimraf } from 'rimraf';
+
+import { MagicRelease } from '../../core/MagicRelease.js';
+import type { MagicReleaseConfig } from '../../types/index.js';
 
 // Unmock fs for integration tests - we need real file system operations
 jest.unmock('fs');
 
 // Test constants - using valid-looking API key formats
-const TEST_API_KEY = 'sk-proj-abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890';
-const TEST_ANTHROPIC_KEY = 'sk-ant-api03-abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const TEST_API_KEY =
+  'sk-proj-abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890';
+const TEST_ANTHROPIC_KEY =
+  'sk-ant-api03-abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
 describe('Magic Release Integration Tests', () => {
   let testDir: string;
@@ -43,34 +46,40 @@ describe('Magic Release Integration Tests', () => {
     it('should generate changelog from commit history', async () => {
       // Debug: check current working directory
       console.log('Current working directory:', process.cwd());
-      
+
       // Debug: Check if git repository exists before setup
-      const gitExistsBefore = await fs.access('.git').then(() => true).catch(() => false);
+      const gitExistsBefore = await fs
+        .access('.git')
+        .then(() => true)
+        .catch(() => false);
       console.log('Git repository exists before setup:', gitExistsBefore);
-      
+
       // Set up test repository with tags
       await setupRepositoryWithTags();
-      
+
       // Debug: Check if git repository exists after setup
-      const gitExistsAfter = await fs.access('.git').then(() => true).catch(() => false);
+      const gitExistsAfter = await fs
+        .access('.git')
+        .then(() => true)
+        .catch(() => false);
       console.log('Git repository exists after setup:', gitExistsAfter);
-      
+
       if (!gitExistsAfter) {
         throw new Error('Git repository was not created properly');
       }
-      
+
       const config: MagicReleaseConfig = {
         llm: {
           provider: 'openai',
           model: 'gpt-3.5-turbo',
-          apiKey: TEST_API_KEY
+          apiKey: TEST_API_KEY,
         },
         git: {
-          tagPattern: 'v*'
+          tagPattern: 'v*',
         },
         changelog: {
-          filename: 'CHANGELOG.md'
-        }
+          filename: 'CHANGELOG.md',
+        },
       };
 
       // Mock LLM response
@@ -78,9 +87,10 @@ describe('Magic Release Integration Tests', () => {
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
-          choices: [{
-            message: {
-              content: `## [1.1.0] - 2024-01-15
+          choices: [
+            {
+              message: {
+                content: `## [1.1.0] - 2024-01-15
 
 ### Added
 - User authentication system
@@ -88,17 +98,18 @@ describe('Magic Release Integration Tests', () => {
 
 ### Fixed
 - Critical security vulnerability
-- Performance optimization issues`
-            }
-          }]
-        })
+- Performance optimization issues`,
+              },
+            },
+          ],
+        }),
       });
 
       const magicRelease = new MagicRelease(config, testDir);
-      const changelog = await magicRelease.generate({ 
+      const changelog = await magicRelease.generate({
         dryRun: true,
         from: 'v1.0.0',
-        to: 'v1.1.0'
+        to: 'v1.1.0',
       });
 
       // Restore original fetch
@@ -112,19 +123,19 @@ describe('Magic Release Integration Tests', () => {
 
     it('should handle file writing in non-dry-run mode', async () => {
       await setupRepositoryWithTags();
-      
+
       const config: MagicReleaseConfig = {
         llm: {
           provider: 'openai',
           model: 'gpt-3.5-turbo',
-          apiKey: TEST_API_KEY
+          apiKey: TEST_API_KEY,
         },
         git: {
-          tagPattern: 'v*'
+          tagPattern: 'v*',
         },
         changelog: {
-          filename: 'CHANGELOG.md'
-        }
+          filename: 'CHANGELOG.md',
+        },
       };
 
       // Mock LLM response
@@ -132,9 +143,10 @@ describe('Magic Release Integration Tests', () => {
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
-          choices: [{
-            message: {
-              content: `## [1.1.0] - 2024-01-15
+          choices: [
+            {
+              message: {
+                content: `## [1.1.0] - 2024-01-15
 
 ### Added
 - User authentication system
@@ -142,24 +154,28 @@ describe('Magic Release Integration Tests', () => {
 
 ### Fixed
 - Critical security vulnerability
-- Performance optimization issues`
-            }
-          }]
-        })
+- Performance optimization issues`,
+              },
+            },
+          ],
+        }),
       });
 
       const magicRelease = new MagicRelease(config, testDir);
-      await magicRelease.generate({ 
+      await magicRelease.generate({
         dryRun: false,
         from: 'v1.0.0',
-        to: 'v1.1.0'
+        to: 'v1.1.0',
       });
 
       // Restore original fetch
       global.fetch = originalFetch;
 
       // Verify file was created
-      const changelogExists = await fs.access('CHANGELOG.md').then(() => true).catch(() => false);
+      const changelogExists = await fs
+        .access('CHANGELOG.md')
+        .then(() => true)
+        .catch(() => false);
       expect(changelogExists).toBe(true);
 
       const content = await fs.readFile('CHANGELOG.md', 'utf-8');
@@ -169,19 +185,19 @@ describe('Magic Release Integration Tests', () => {
 
     it('should handle commit range filtering', async () => {
       await setupRepositoryWithTags();
-      
+
       const config: MagicReleaseConfig = {
         llm: {
           provider: 'openai',
           model: 'gpt-3.5-turbo',
-          apiKey: TEST_API_KEY
+          apiKey: TEST_API_KEY,
         },
         git: {
-          tagPattern: 'v*'
+          tagPattern: 'v*',
         },
         changelog: {
-          filename: 'CHANGELOG.md'
-        }
+          filename: 'CHANGELOG.md',
+        },
       };
 
       // Mock LLM response
@@ -189,9 +205,10 @@ describe('Magic Release Integration Tests', () => {
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
-          choices: [{
-            message: {
-              content: `## [1.1.0] - 2024-01-15
+          choices: [
+            {
+              message: {
+                content: `## [1.1.0] - 2024-01-15
 
 ### Added
 - User authentication system
@@ -199,17 +216,18 @@ describe('Magic Release Integration Tests', () => {
 
 ### Fixed
 - Critical security vulnerability
-- Performance optimization issues`
-            }
-          }]
-        })
+- Performance optimization issues`,
+              },
+            },
+          ],
+        }),
       });
 
       const magicRelease = new MagicRelease(config, testDir);
       const changelog = await magicRelease.generate({
         from: 'v1.0.0',
         to: 'v1.1.0',
-        dryRun: true
+        dryRun: true,
       });
 
       // Restore original fetch
@@ -222,19 +240,20 @@ describe('Magic Release Integration Tests', () => {
   describe('Error handling', () => {
     it('should handle LLM API errors gracefully', async () => {
       await setupBasicRepository();
-      
+
       const config: MagicReleaseConfig = {
         llm: {
           provider: 'openai',
           model: 'gpt-3.5-turbo',
-          apiKey: 'sk-proj-fakefakefakefakefakefakefakefakefakefakefakefakefakefakefakefakefakefakefake'
+          apiKey:
+            'sk-proj-fakefakefakefakefakefakefakefakefakefakefakefakefakefakefakefakefakefakefake',
         },
         git: {
-          tagPattern: 'v*'
+          tagPattern: 'v*',
         },
         changelog: {
-          filename: 'CHANGELOG.md'
-        }
+          filename: 'CHANGELOG.md',
+        },
       };
 
       // Mock LLM error response
@@ -245,55 +264,57 @@ describe('Magic Release Integration Tests', () => {
         statusText: 'Unauthorized',
         json: async () => ({
           error: {
-            message: 'Invalid API key'
-          }
-        })
+            message: 'Invalid API key',
+          },
+        }),
       });
 
       const magicRelease = new MagicRelease(config, testDir);
-      
+
       // Should handle error gracefully and still generate basic changelog
       const result = await magicRelease.generate({ dryRun: true });
       expect(result).toContain('# Changelog');
-      
+
       // Restore original fetch
       global.fetch = originalFetch;
     });
 
     it('should handle repositories with no valid commits', async () => {
       // Set up empty repository (no commits)
-      
+
       const config: MagicReleaseConfig = {
         llm: {
           provider: 'openai',
           model: 'gpt-3.5-turbo',
-          apiKey: TEST_API_KEY
+          apiKey: TEST_API_KEY,
         },
         git: {
-          tagPattern: 'v*'
+          tagPattern: 'v*',
         },
         changelog: {
-          filename: 'CHANGELOG.md'
-        }
+          filename: 'CHANGELOG.md',
+        },
       };
 
       const magicRelease = new MagicRelease(config, testDir);
-      
+
       // Should generate empty changelog instead of throwing
       const result = await magicRelease.generate({ dryRun: true });
       expect(result).toContain('# Changelog');
-      expect(result).toContain('All notable changes to this project will be documented in this file');
+      expect(result).toContain(
+        'All notable changes to this project will be documented in this file'
+      );
     });
   });
 
   describe('Configuration validation', () => {
     it('should validate LLM configuration', async () => {
       await setupBasicRepository();
-      
+
       const invalidConfig = {
         // Missing LLM configuration
         git: { tagPattern: 'v*' },
-        changelog: { filename: 'CHANGELOG.md' }
+        changelog: { filename: 'CHANGELOG.md' },
       } as MagicReleaseConfig;
 
       expect(() => new MagicRelease(invalidConfig, testDir)).toThrow();
@@ -301,18 +322,18 @@ describe('Magic Release Integration Tests', () => {
 
     it('should work with different providers', async () => {
       await setupBasicRepository();
-      
+
       const configs = [
         {
           llm: { provider: 'openai' as const, apiKey: TEST_API_KEY },
           git: { tagPattern: 'v*' },
-          changelog: { filename: 'CHANGELOG.md' }
+          changelog: { filename: 'CHANGELOG.md' },
         },
         {
           llm: { provider: 'anthropic' as const, apiKey: TEST_ANTHROPIC_KEY },
           git: { tagPattern: 'v*' },
-          changelog: { filename: 'CHANGELOG.md' }
-        }
+          changelog: { filename: 'CHANGELOG.md' },
+        },
       ];
 
       configs.forEach(config => {
@@ -326,32 +347,43 @@ describe('Magic Release Integration Tests', () => {
 async function execCommand(command: string, args: string[]): Promise<void> {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, { stdio: 'pipe' });
-    
+
     let stderr = '';
-    child.stderr?.on('data', (data) => {
+    child.stderr?.on('data', data => {
       stderr += data.toString();
     });
-    
-    child.on('close', (code) => {
+
+    child.on('close', code => {
       if (code === 0) {
         resolve();
       } else {
-        reject(new Error(`Command "${command} ${args.join(' ')}" failed with exit code ${code}. stderr: ${stderr}`));
+        reject(
+          new Error(
+            `Command "${command} ${args.join(' ')}" failed with exit code ${code}. stderr: ${stderr}`
+          )
+        );
       }
     });
   });
 }
 
 async function setupBasicRepository(): Promise<void> {
-  await fs.writeFile('package.json', JSON.stringify({
-    name: 'test-integration-package',
-    version: '1.0.0',
-    description: 'Test package for integration tests',
-    repository: {
-      type: 'git',
-      url: 'https://github.com/test/test-package.git'
-    }
-  }, null, 2));
+  await fs.writeFile(
+    'package.json',
+    JSON.stringify(
+      {
+        name: 'test-integration-package',
+        version: '1.0.0',
+        description: 'Test package for integration tests',
+        repository: {
+          type: 'git',
+          url: 'https://github.com/test/test-package.git',
+        },
+      },
+      null,
+      2
+    )
+  );
 
   await fs.writeFile('README.md', '# Test Project\n\nIntegration test project.');
   await execCommand('git', ['add', 'README.md']);
@@ -360,7 +392,7 @@ async function setupBasicRepository(): Promise<void> {
 
   // Create src directory and add files
   await fs.mkdir('src', { recursive: true });
-  
+
   await fs.writeFile('src/auth.js', 'export const auth = { login: () => {}, logout: () => {} };');
   await execCommand('git', ['add', 'src/auth.js']);
   await execCommand('git', ['commit', '-m', 'feat: add authentication system']);
@@ -380,10 +412,10 @@ async function setupBasicRepository(): Promise<void> {
 
 async function setupRepositoryWithTags(): Promise<void> {
   await setupBasicRepository();
-  
+
   // Tag the current state
   await execCommand('git', ['tag', 'v1.1.0']);
-  
+
   // Add more commits for future versions
   await fs.writeFile('src/feature.js', 'export const feature = { newFeature: () => {} };');
   await execCommand('git', ['add', 'src/feature.js']);

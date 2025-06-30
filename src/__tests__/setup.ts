@@ -25,7 +25,7 @@ jest.mock('conf', () => {
     delete: jest.fn(),
     clear: jest.fn(),
     store: {},
-    path: '/mock/config/path'
+    path: '/mock/config/path',
   }));
 });
 
@@ -37,7 +37,7 @@ global.mockAPIResponse = (status: number, data: any) => {
     status,
     json: jest.fn().mockResolvedValue(data),
     text: jest.fn().mockResolvedValue(JSON.stringify(data)),
-    statusText: status === 200 ? 'OK' : 'Error'
+    statusText: status === 200 ? 'OK' : 'Error',
   } as any);
 };
 
@@ -52,7 +52,7 @@ global.TEST_CONSTANTS = {
   VALID_ANTHROPIC_KEY: 'sk-ant-test1234567890abcdef1234567890abcdef1234567890',
   VALID_AZURE_KEY: '1234567890abcdef1234567890abcdef',
   AZURE_ENDPOINT: 'https://test.openai.azure.com',
-  
+
   SAMPLE_COMMITS: [
     {
       hash: 'abc123',
@@ -61,7 +61,7 @@ global.TEST_CONSTANTS = {
       date: new Date('2023-01-01'),
       type: 'feat',
       scope: 'core',
-      breaking: false
+      breaking: false,
     },
     {
       hash: 'def456',
@@ -69,29 +69,35 @@ global.TEST_CONSTANTS = {
       author: 'Test Author',
       date: new Date('2023-01-02'),
       type: 'fix',
-      breaking: false
-    }
+      breaking: false,
+    },
   ],
-  
+
   SAMPLE_CHANGELOG_ENTRY: {
     version: '1.0.0',
     date: new Date('2023-01-01'),
     sections: new Map([
-      ['Added', [
-        {
-          description: 'New feature implementation',
-          commits: [{ hash: 'abc123', message: 'feat: add new feature' }],
-          scope: 'core'
-        }
-      ]],
-      ['Fixed', [
-        {
-          description: 'Bug resolution',
-          commits: [{ hash: 'def456', message: 'fix: resolve bug' }]
-        }
-      ]]
-    ])
-  }
+      [
+        'Added',
+        [
+          {
+            description: 'New feature implementation',
+            commits: [{ hash: 'abc123', message: 'feat: add new feature' }],
+            scope: 'core',
+          },
+        ],
+      ],
+      [
+        'Fixed',
+        [
+          {
+            description: 'Bug resolution',
+            commits: [{ hash: 'def456', message: 'fix: resolve bug' }],
+          },
+        ],
+      ],
+    ]),
+  },
 };
 
 // Console methods mocking for cleaner test output
@@ -100,7 +106,7 @@ const originalConsole = { ...console };
 beforeEach(() => {
   // Reset all mocks before each test
   jest.clearAllMocks();
-  
+
   // Mock console methods to reduce noise in tests
   jest.spyOn(console, 'log').mockImplementation(() => {});
   jest.spyOn(console, 'warn').mockImplementation(() => {});
@@ -120,7 +126,7 @@ afterEach(() => {
 declare global {
   function mockAPIResponse(status: number, data: any): void;
   function mockAPIError(error: Error): void;
-  
+
   var TEST_CONSTANTS: {
     VALID_OPENAI_KEY: string;
     VALID_ANTHROPIC_KEY: string;

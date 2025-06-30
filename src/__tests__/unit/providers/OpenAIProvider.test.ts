@@ -5,8 +5,8 @@
  * Tests OpenAI API integration and provider functionality
  */
 
-import { OpenAIProvider } from '../../../src/core/llm/providers/OpenAIProvider';
-import { APIKeyError } from '../../../src/utils/errors';
+import { OpenAIProvider } from '../../../core/llm/providers/OpenAIProvider';
+import { APIKeyError } from '../../../utils/errors';
 
 // Mock fetch globally
 global.fetch = jest.fn();
@@ -16,7 +16,7 @@ describe('OpenAIProvider', () => {
     apiKey: TEST_CONSTANTS.VALID_OPENAI_KEY,
     model: 'gpt-4o-mini',
     temperature: 0.1,
-    maxTokens: 1000
+    maxTokens: 1000,
   };
 
   let provider: OpenAIProvider;
@@ -36,14 +36,14 @@ describe('OpenAIProvider', () => {
       expect(() => {
         new OpenAIProvider({
           ...validConfig,
-          apiKey: 'invalid-key'
+          apiKey: 'invalid-key',
         });
       }).toThrow(APIKeyError);
     });
 
     it('should set default model if not provided', () => {
       const providerWithDefaults = new OpenAIProvider({
-        apiKey: TEST_CONSTANTS.VALID_OPENAI_KEY
+        apiKey: TEST_CONSTANTS.VALID_OPENAI_KEY,
       });
       expect(providerWithDefaults.getAvailableModels()).toContain('gpt-4o-mini');
     });
@@ -62,7 +62,7 @@ describe('OpenAIProvider', () => {
         { key: 'invalid', expectedMessage: 'Invalid' },
         { key: 'sk-short', expectedMessage: 'Invalid' },
         { key: 'ak-wrongprefix1234567890abcdef1234567890abcdef123456', expectedMessage: 'Invalid' },
-        { key: 'sk-1234567890abcdef12345', expectedMessage: 'Invalid' } // too short
+        { key: 'sk-1234567890abcdef12345', expectedMessage: 'Invalid' }, // too short
       ];
 
       for (const { key, expectedMessage } of invalidKeys) {
@@ -90,8 +90,8 @@ describe('OpenAIProvider', () => {
       mockAPIResponse(200, {
         data: [
           { id: 'gpt-4o-mini', object: 'model' },
-          { id: 'gpt-4', object: 'model' }
-        ]
+          { id: 'gpt-4', object: 'model' },
+        ],
       });
 
       const result = await provider.testConnection();
@@ -101,7 +101,7 @@ describe('OpenAIProvider', () => {
 
     it('should handle unauthorized response', async () => {
       mockAPIResponse(401, {
-        error: { message: 'Invalid API key' }
+        error: { message: 'Invalid API key' },
       });
 
       const result = await provider.testConnection();
@@ -122,14 +122,14 @@ describe('OpenAIProvider', () => {
 
       const customKey = 'sk-custom1234567890abcdef1234567890abcdef1234567890';
       const result = await provider.testConnection(customKey);
-      
+
       expect(result.valid).toBe(true);
       expect(fetch).toHaveBeenCalledWith(
         'https://api.openai.com/v1/models',
         expect.objectContaining({
           headers: expect.objectContaining({
-            'Authorization': `Bearer ${customKey}`
-          })
+            Authorization: `Bearer ${customKey}`,
+          }),
         })
       );
     });
@@ -138,7 +138,7 @@ describe('OpenAIProvider', () => {
   describe('Generate Completion', () => {
     const sampleMessages = [
       { role: 'system' as const, content: 'You are a helpful assistant.' },
-      { role: 'user' as const, content: 'Generate a changelog entry.' }
+      { role: 'user' as const, content: 'Generate a changelog entry.' },
     ];
 
     it('should generate completion successfully', async () => {
@@ -147,19 +147,21 @@ describe('OpenAIProvider', () => {
         object: 'chat.completion',
         created: 1677652288,
         model: 'gpt-4o-mini',
-        choices: [{
-          index: 0,
-          message: {
-            role: 'assistant',
-            content: '## [1.0.0] - 2023-01-01\n\n### Added\n- New feature'
+        choices: [
+          {
+            index: 0,
+            message: {
+              role: 'assistant',
+              content: '## [1.0.0] - 2023-01-01\n\n### Added\n- New feature',
+            },
+            finish_reason: 'stop',
           },
-          finish_reason: 'stop'
-        }],
+        ],
         usage: {
           prompt_tokens: 50,
           completion_tokens: 25,
-          total_tokens: 75
-        }
+          total_tokens: 75,
+        },
       };
 
       mockAPIResponse(200, mockResponse);
@@ -174,36 +176,36 @@ describe('OpenAIProvider', () => {
 
     it('should handle API errors during completion', async () => {
       mockAPIResponse(429, {
-        error: { message: 'Rate limit exceeded' }
+        error: { message: 'Rate limit exceeded' },
       });
 
-      await expect(provider.generateCompletion(sampleMessages))
-        .rejects.toThrow('OpenAI API error: 429');
+      await expect(provider.generateCompletion(sampleMessages)).rejects.toThrow(
+        'OpenAI API error: 429'
+      );
     });
 
     it('should handle empty response', async () => {
       mockAPIResponse(200, {
-        choices: []
+        choices: [],
       });
 
-      await expect(provider.generateCompletion(sampleMessages))
-        .rejects.toThrow('No choices returned from OpenAI API');
+      await expect(provider.generateCompletion(sampleMessages)).rejects.toThrow(
+        'No choices returned from OpenAI API'
+      );
     });
 
     it('should validate messages before sending', async () => {
-      const invalidMessages = [
-        { role: 'invalid' as any, content: 'test' }
-      ];
+      const invalidMessages = [{ role: 'invalid' as any, content: 'test' }];
 
-      await expect(provider.generateCompletion(invalidMessages))
-        .rejects.toThrow('Invalid message role');
+      await expect(provider.generateCompletion(invalidMessages)).rejects.toThrow(
+        'Invalid message role'
+      );
     });
 
     it('should handle timeout', async () => {
       mockAPIError(new Error('AbortError'));
 
-      await expect(provider.generateCompletion(sampleMessages))
-        .rejects.toThrow('AbortError');
+      await expect(provider.generateCompletion(sampleMessages)).rejects.toThrow('AbortError');
     });
   });
 
@@ -226,9 +228,9 @@ describe('OpenAIProvider', () => {
     it('should calculate cost for gpt-4o-mini', () => {
       const usage = { promptTokens: 1000, completionTokens: 500 };
       const cost = provider.calculateCost(usage);
-      
+
       // gpt-4o-mini: $0.000150/1K input, $0.0006/1K output
-      const expectedCost = (1000 * 0.000150 / 1000) + (500 * 0.0006 / 1000);
+      const expectedCost = (1000 * 0.00015) / 1000 + (500 * 0.0006) / 1000;
       expect(cost).toBeCloseTo(expectedCost, 6);
     });
 
@@ -245,18 +247,18 @@ describe('OpenAIProvider', () => {
     it('should support custom base URL', () => {
       const customProvider = new OpenAIProvider({
         ...validConfig,
-        baseURL: 'https://custom-openai.example.com/v1'
+        baseURL: 'https://custom-openai.example.com/v1',
       });
-      
+
       expect(customProvider).toBeInstanceOf(OpenAIProvider);
     });
 
     it('should support organization ID', () => {
       const orgProvider = new OpenAIProvider({
         ...validConfig,
-        organization: 'org-123456789'
+        organization: 'org-123456789',
       });
-      
+
       expect(orgProvider).toBeInstanceOf(OpenAIProvider);
     });
   });

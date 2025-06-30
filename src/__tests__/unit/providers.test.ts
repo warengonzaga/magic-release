@@ -22,7 +22,7 @@ describe('Provider Tests', () => {
     it('should validate OpenAI API key format', () => {
       const validKey = 'sk-1234567890abcdef1234567890abcdef1234567890abcdef12';
       const invalidKey = 'invalid-key';
-      
+
       // Simple format validation
       expect(validKey.startsWith('sk-')).toBe(true);
       expect(validKey.length).toBeGreaterThan(20);
@@ -32,7 +32,7 @@ describe('Provider Tests', () => {
     it('should validate Anthropic API key format', () => {
       const validKey = 'sk-ant-1234567890abcdef1234567890abcdef1234567890';
       const invalidKey = 'invalid-key';
-      
+
       // Simple format validation
       expect(validKey.startsWith('sk-ant-')).toBe(true);
       expect(validKey.length).toBeGreaterThan(20);
@@ -42,7 +42,7 @@ describe('Provider Tests', () => {
     it('should validate Azure API key format', () => {
       const validKey = '1234567890abcdef1234567890abcdef';
       const invalidKey = 'invalid-key';
-      
+
       // Simple format validation
       expect(validKey.length).toBe(32);
       expect(/^[a-f0-9]{32}$/.test(validKey)).toBe(true);
@@ -56,7 +56,7 @@ describe('Provider Tests', () => {
         name: 'OpenAI',
         models: ['gpt-4', 'gpt-3.5-turbo'],
         defaultModel: 'gpt-4',
-        apiKeyPattern: /^sk-[A-Za-z0-9]{48,}$/
+        apiKeyPattern: /^sk-[A-Za-z0-9]{48,}$/,
       };
 
       expect(config.name).toBe('OpenAI');
@@ -70,7 +70,7 @@ describe('Provider Tests', () => {
         name: 'Anthropic',
         models: ['claude-3-sonnet-20240229', 'claude-3-haiku-20240307'],
         defaultModel: 'claude-3-sonnet-20240229',
-        apiKeyPattern: /^sk-ant-[A-Za-z0-9]{95,}$/
+        apiKeyPattern: /^sk-ant-[A-Za-z0-9]{95,}$/,
       };
 
       expect(config.name).toBe('Anthropic');
@@ -84,7 +84,7 @@ describe('Provider Tests', () => {
         name: 'Azure OpenAI',
         models: ['gpt-4', 'gpt-35-turbo'],
         defaultModel: 'gpt-4',
-        apiKeyPattern: /^[a-f0-9]{32}$/
+        apiKeyPattern: /^[a-f0-9]{32}$/,
       };
 
       expect(config.name).toBe('Azure OpenAI');
@@ -98,20 +98,20 @@ describe('Provider Tests', () => {
     it('should handle invalid provider type', () => {
       const invalidProvider = 'invalid-provider';
       const validProviders = ['openai', 'anthropic', 'azure'];
-      
+
       expect(validProviders).not.toContain(invalidProvider);
     });
 
     it('should handle missing API key', () => {
       const apiKey = undefined as string | undefined;
       const isValid = apiKey !== undefined && apiKey.length > 0;
-      
+
       expect(isValid).toBe(false);
     });
 
     it('should handle network errors', () => {
       const networkError = new Error('Network request failed');
-      
+
       expect(networkError.message).toBe('Network request failed');
       expect(networkError).toBeInstanceOf(Error);
     });

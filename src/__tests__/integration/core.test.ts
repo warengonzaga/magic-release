@@ -9,15 +9,18 @@ jest.unmock('fs');
 import { promises as fs } from 'fs';
 import path from 'path';
 import { tmpdir } from 'os';
-import { rimraf } from 'rimraf';
 import { spawn } from 'child_process';
 
-import { MagicRelease } from '../../src/core/MagicRelease.js';
-import type { MagicReleaseConfig } from '../../src/types/index.js';
+import { rimraf } from 'rimraf';
+
+import { MagicRelease } from '../../core/MagicRelease.js';
+import type { MagicReleaseConfig } from '../../types/index.js';
 
 // Test constants for integration tests
-const TEST_API_KEY = 'sk-proj-abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890';
-const TEST_ANTHROPIC_KEY = 'sk-ant-api03-abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890ABC';
+const TEST_API_KEY =
+  'sk-proj-abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890';
+const TEST_ANTHROPIC_KEY =
+  'sk-ant-api03-abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890ABC';
 
 describe('MagicRelease Core Integration Tests', () => {
   let testDir: string;
@@ -42,23 +45,23 @@ describe('MagicRelease Core Integration Tests', () => {
   describe('Repository analysis', () => {
     it('should analyze repository structure correctly', async () => {
       await setupTestRepository();
-      
+
       const config: MagicReleaseConfig = {
         llm: {
           provider: 'openai',
           model: 'gpt-3.5-turbo',
-          apiKey: TEST_API_KEY
+          apiKey: TEST_API_KEY,
         },
         git: {
-          tagPattern: 'v*'
+          tagPattern: 'v*',
         },
         changelog: {
-          filename: 'CHANGELOG.md'
-        }
+          filename: 'CHANGELOG.md',
+        },
       };
 
       const magicRelease = new MagicRelease(config, testDir);
-      
+
       // Test repository analysis
       expect(magicRelease).toBeTruthy();
       expect(typeof magicRelease.generate).toBe('function');
@@ -66,52 +69,56 @@ describe('MagicRelease Core Integration Tests', () => {
 
     it('should handle different tag patterns', async () => {
       await setupRepositoryWithDifferentTags();
-      
+
       const config: MagicReleaseConfig = {
         llm: {
           provider: 'openai',
           model: 'gpt-3.5-turbo',
-          apiKey: TEST_API_KEY
+          apiKey: TEST_API_KEY,
         },
         git: {
-          tagPattern: 'release-*'
+          tagPattern: 'release-*',
         },
         changelog: {
-          filename: 'CHANGELOG.md'
-        }
+          filename: 'CHANGELOG.md',
+        },
       };
 
       // Mock LLM response with improved categorization
       const originalFetch = global.fetch;
       global.fetch = jest.fn().mockImplementation(async (_url, options) => {
-        const body = JSON.parse(options?.body || '{}');
-        const userMessage = body.messages?.find((m: any) => m.role === 'user')?.content || '';
-        
+        const body = JSON.parse(options?.body ?? '{}');
+        const userMessage = body.messages?.find((m: any) => m.role === 'user')?.content ?? '';
+
         // Handle commit categorization calls
-        if (userMessage.includes('Categorize') || body.messages?.find((m: any) => m.content?.includes('categorization'))) {
+        if (
+          userMessage.includes('Categorize') ||
+          body.messages?.find((m: any) => m.content?.includes('categorization'))
+        ) {
           if (userMessage.includes('feature') || userMessage.includes('Add new')) {
             return {
               ok: true,
               json: async () => ({
-                choices: [{ message: { content: 'Added' } }]
-              })
+                choices: [{ message: { content: 'Added' } }],
+              }),
             };
           }
           return {
             ok: true,
             json: async () => ({
-              choices: [{ message: { content: 'Changed' } }]
-            })
+              choices: [{ message: { content: 'Changed' } }],
+            }),
           };
         }
-        
+
         // Handle changelog generation calls
         return {
           ok: true,
           json: async () => ({
-            choices: [{
-              message: {
-                content: `# Changelog
+            choices: [
+              {
+                message: {
+                  content: `# Changelog
 
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
@@ -120,10 +127,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- New feature with custom tag pattern`
-              }
-            }]
-          })
+- New feature with custom tag pattern`,
+                },
+              },
+            ],
+          }),
         };
       });
 
@@ -131,7 +139,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
       const changelog = await magicRelease.generate({
         from: 'release-1.0.0',
         to: 'HEAD',
-        dryRun: true
+        dryRun: true,
       });
 
       // Restore original fetch
@@ -147,11 +155,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   describe('Configuration validation', () => {
     it('should validate required configuration fields', async () => {
       await setupTestRepository();
-      
+
       const invalidConfig = {
         // Missing required fields
         git: {},
-        changelog: {}
+        changelog: {},
       } as MagicReleaseConfig;
 
       expect(() => new MagicRelease(invalidConfig, testDir)).toThrow();
@@ -159,18 +167,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
     it('should handle different LLM providers', async () => {
       await setupTestRepository();
-      
+
       const configs = [
         {
           llm: { provider: 'openai' as const, apiKey: TEST_API_KEY },
           git: { tagPattern: 'v*' },
-          changelog: { filename: 'CHANGELOG.md' }
+          changelog: { filename: 'CHANGELOG.md' },
         },
         {
           llm: { provider: 'anthropic' as const, apiKey: TEST_ANTHROPIC_KEY },
           git: { tagPattern: 'v*' },
-          changelog: { filename: 'CHANGELOG.md' }
-        }
+          changelog: { filename: 'CHANGELOG.md' },
+        },
       ];
 
       configs.forEach(config => {
@@ -182,61 +190,73 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   describe('Commit parsing and analysis', () => {
     it('should parse conventional commits correctly', async () => {
       await setupRepositoryWithConventionalCommits();
-      
+
       const config: MagicReleaseConfig = {
         llm: {
           provider: 'openai',
           model: 'gpt-3.5-turbo',
-          apiKey: TEST_API_KEY
+          apiKey: TEST_API_KEY,
         },
         git: {
-          tagPattern: 'v*'
+          tagPattern: 'v*',
         },
         changelog: {
           filename: 'CHANGELOG.md',
-          includeCommitLinks: true
-        }
+          includeCommitLinks: true,
+        },
       };
 
       // Mock LLM response that recognizes conventional commit types
       const originalFetch = global.fetch;
       global.fetch = jest.fn().mockImplementation(async (_url, options) => {
-        const body = JSON.parse(options?.body || '{}');
-        const userMessage = body.messages?.find((m: any) => m.role === 'user')?.content || '';
-        
+        const body = JSON.parse(options?.body ?? '{}');
+        const userMessage = body.messages?.find((m: any) => m.role === 'user')?.content ?? '';
+
         // Handle commit categorization calls
-        if (userMessage.includes('Categorize') || body.messages?.find((m: any) => m.content?.includes('categorization'))) {
-          if (userMessage.includes('feat:') || userMessage.includes('Add user authentication') || userMessage.includes('Add new API endpoints')) {
+        if (
+          userMessage.includes('Categorize') ||
+          body.messages?.find((m: any) => m.content?.includes('categorization'))
+        ) {
+          if (
+            userMessage.includes('feat:') ||
+            userMessage.includes('Add user authentication') ||
+            userMessage.includes('Add new API endpoints')
+          ) {
             return {
               ok: true,
               json: async () => ({
-                choices: [{ message: { content: 'Added' } }]
-              })
+                choices: [{ message: { content: 'Added' } }],
+              }),
             };
           }
-          if (userMessage.includes('fix:') || userMessage.includes('Fix performance') || userMessage.includes('Resolve critical bug')) {
+          if (
+            userMessage.includes('fix:') ||
+            userMessage.includes('Fix performance') ||
+            userMessage.includes('Resolve critical bug')
+          ) {
             return {
               ok: true,
               json: async () => ({
-                choices: [{ message: { content: 'Fixed' } }]
-              })
+                choices: [{ message: { content: 'Fixed' } }],
+              }),
             };
           }
           return {
             ok: true,
             json: async () => ({
-              choices: [{ message: { content: 'Changed' } }]
-            })
+              choices: [{ message: { content: 'Changed' } }],
+            }),
           };
         }
-        
+
         // Handle changelog generation calls
         return {
           ok: true,
           json: async () => ({
-            choices: [{
-              message: {
-                content: `# Changelog
+            choices: [
+              {
+                message: {
+                  content: `# Changelog
 
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
@@ -254,10 +274,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Updated authentication flow
-- Improved error handling`
-              }
-            }]
-          })
+- Improved error handling`,
+                },
+              },
+            ],
+          }),
         };
       });
 
@@ -276,52 +297,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
     it('should handle breaking changes correctly', async () => {
       await setupRepositoryWithBreakingChanges();
-      
+
       const config: MagicReleaseConfig = {
         llm: {
           provider: 'openai',
           model: 'gpt-3.5-turbo',
-          apiKey: TEST_API_KEY
+          apiKey: TEST_API_KEY,
         },
         git: {
-          tagPattern: 'v*'
+          tagPattern: 'v*',
         },
         changelog: {
-          filename: 'CHANGELOG.md'
-        }
+          filename: 'CHANGELOG.md',
+        },
       };
 
       // Mock LLM response with breaking changes
       const originalFetch = global.fetch;
       global.fetch = jest.fn().mockImplementation(async (_url, options) => {
-        const body = JSON.parse(options?.body || '{}');
-        const userMessage = body.messages?.find((m: any) => m.role === 'user')?.content || '';
-        
+        const body = JSON.parse(options?.body ?? '{}');
+        const userMessage = body.messages?.find((m: any) => m.role === 'user')?.content ?? '';
+
         // Handle commit categorization calls
-        if (userMessage.includes('Categorize') || body.messages?.find((m: any) => m.content?.includes('categorization'))) {
+        if (
+          userMessage.includes('Categorize') ||
+          body.messages?.find((m: any) => m.content?.includes('categorization'))
+        ) {
           if (userMessage.includes('BREAKING') || userMessage.includes('!:')) {
             return {
               ok: true,
               json: async () => ({
-                choices: [{ message: { content: 'BREAKING CHANGES' } }]
-              })
+                choices: [{ message: { content: 'BREAKING CHANGES' } }],
+              }),
             };
           }
           return {
             ok: true,
             json: async () => ({
-              choices: [{ message: { content: 'Changed' } }]
-            })
+              choices: [{ message: { content: 'Changed' } }],
+            }),
           };
         }
-        
+
         // Handle changelog generation calls
         return {
           ok: true,
           json: async () => ({
-            choices: [{
-              message: {
-                content: `# Changelog
+            choices: [
+              {
+                message: {
+                  content: `# Changelog
 
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
@@ -337,10 +362,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New authentication system
 
 ### Changed
-- Updated API response format`
-              }
-            }]
-          })
+- Updated API response format`,
+                },
+              },
+            ],
+          }),
         };
       });
 
@@ -361,44 +387,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   describe('File operations', () => {
     it('should create new changelog file when none exists', async () => {
       await setupTestRepository();
-      
+
       const config: MagicReleaseConfig = {
         llm: {
           provider: 'openai',
           model: 'gpt-3.5-turbo',
-          apiKey: TEST_API_KEY
+          apiKey: TEST_API_KEY,
         },
         git: {
-          tagPattern: 'v*'
+          tagPattern: 'v*',
         },
         changelog: {
-          filename: 'CHANGELOG.md'
-        }
+          filename: 'CHANGELOG.md',
+        },
       };
 
       // Mock LLM response
       const originalFetch = global.fetch;
       global.fetch = jest.fn().mockImplementation(async (_url, options) => {
-        const body = JSON.parse(options?.body || '{}');
-        const userMessage = body.messages?.find((m: any) => m.role === 'user')?.content || '';
-        
+        const body = JSON.parse(options?.body ?? '{}');
+        const userMessage = body.messages?.find((m: any) => m.role === 'user')?.content ?? '';
+
         // Handle commit categorization calls
-        if (userMessage.includes('Categorize') || body.messages?.find((m: any) => m.content?.includes('categorization'))) {
+        if (
+          userMessage.includes('Categorize') ||
+          body.messages?.find((m: any) => m.content?.includes('categorization'))
+        ) {
           return {
             ok: true,
             json: async () => ({
-              choices: [{ message: { content: 'Added' } }]
-            })
+              choices: [{ message: { content: 'Added' } }],
+            }),
           };
         }
-        
+
         // Handle changelog generation calls
         return {
           ok: true,
           json: async () => ({
-            choices: [{
-              message: {
-                content: `# Changelog
+            choices: [
+              {
+                message: {
+                  content: `# Changelog
 
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
@@ -407,10 +437,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Initial changelog generation`
-              }
-            }]
-          })
+- Initial changelog generation`,
+                },
+              },
+            ],
+          }),
         };
       });
 
@@ -421,7 +452,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
       global.fetch = originalFetch;
 
       // Verify file was created
-      const changelogExists = await fs.access('CHANGELOG.md').then(() => true).catch(() => false);
+      const changelogExists = await fs
+        .access('CHANGELOG.md')
+        .then(() => true)
+        .catch(() => false);
       expect(changelogExists).toBe(true);
 
       const content = await fs.readFile('CHANGELOG.md', 'utf-8');
@@ -432,19 +466,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
     it('should use custom changelog filename', async () => {
       await setupTestRepository();
-      
+
       const config: MagicReleaseConfig = {
         llm: {
           provider: 'openai',
           model: 'gpt-3.5-turbo',
-          apiKey: TEST_API_KEY
+          apiKey: TEST_API_KEY,
         },
         git: {
-          tagPattern: 'v*'
+          tagPattern: 'v*',
         },
         changelog: {
-          filename: 'HISTORY.md'
-        }
+          filename: 'HISTORY.md',
+        },
       };
 
       // Mock LLM response
@@ -452,12 +486,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
-          choices: [{
-            message: {
-              content: '## [1.1.0] - 2024-01-15\n\n### Added\n- Custom filename support'
-            }
-          }]
-        })
+          choices: [
+            {
+              message: {
+                content: '## [1.1.0] - 2024-01-15\n\n### Added\n- Custom filename support',
+              },
+            },
+          ],
+        }),
       });
 
       const magicRelease = new MagicRelease(config, testDir);
@@ -467,10 +503,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
       global.fetch = originalFetch;
 
       // Verify custom filename was used
-      const historyExists = await fs.access('HISTORY.md').then(() => true).catch(() => false);
+      const historyExists = await fs
+        .access('HISTORY.md')
+        .then(() => true)
+        .catch(() => false);
       expect(historyExists).toBe(true);
 
-      const changelogExists = await fs.access('CHANGELOG.md').then(() => true).catch(() => false);
+      const changelogExists = await fs
+        .access('CHANGELOG.md')
+        .then(() => true)
+        .catch(() => false);
       expect(changelogExists).toBe(false);
     });
   });
@@ -478,44 +520,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   describe('Performance and scalability', () => {
     it('should handle large repositories efficiently', async () => {
       await setupLargeRepository();
-      
+
       const config: MagicReleaseConfig = {
         llm: {
           provider: 'openai',
           model: 'gpt-3.5-turbo',
-          apiKey: TEST_API_KEY
+          apiKey: TEST_API_KEY,
         },
         git: {
-          tagPattern: 'v*'
+          tagPattern: 'v*',
         },
         changelog: {
-          filename: 'CHANGELOG.md'
-        }
+          filename: 'CHANGELOG.md',
+        },
       };
 
       // Mock LLM response
       const originalFetch = global.fetch;
       global.fetch = jest.fn().mockImplementation(async (_url, options) => {
-        const body = JSON.parse(options?.body || '{}');
-        const userMessage = body.messages?.find((m: any) => m.role === 'user')?.content || '';
-        
+        const body = JSON.parse(options?.body ?? '{}');
+        const userMessage = body.messages?.find((m: any) => m.role === 'user')?.content ?? '';
+
         // Handle commit categorization calls
-        if (userMessage.includes('Categorize') || body.messages?.find((m: any) => m.content?.includes('categorization'))) {
+        if (
+          userMessage.includes('Categorize') ||
+          body.messages?.find((m: any) => m.content?.includes('categorization'))
+        ) {
           return {
             ok: true,
             json: async () => ({
-              choices: [{ message: { content: 'Added' } }]
-            })
+              choices: [{ message: { content: 'Added' } }],
+            }),
           };
         }
-        
+
         // Handle changelog generation calls
         return {
           ok: true,
           json: async () => ({
-            choices: [{
-              message: {
-                content: `# Changelog
+            choices: [
+              {
+                message: {
+                  content: `# Changelog
 
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
@@ -524,10 +570,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Multiple features from large commit history`
-              }
-            }]
-          })
+- Multiple features from large commit history`,
+                },
+              },
+            ],
+          }),
         };
       });
 
@@ -553,8 +600,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 async function execCommand(command: string, args: string[]): Promise<void> {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, { stdio: 'pipe' });
-    
-    child.on('close', (code) => {
+
+    child.on('close', code => {
       if (code === 0) {
         resolve();
       } else {
@@ -565,10 +612,17 @@ async function execCommand(command: string, args: string[]): Promise<void> {
 }
 
 async function setupTestRepository(): Promise<void> {
-  await fs.writeFile('package.json', JSON.stringify({
-    name: 'test-core-package',
-    version: '1.0.0'
-  }, null, 2));
+  await fs.writeFile(
+    'package.json',
+    JSON.stringify(
+      {
+        name: 'test-core-package',
+        version: '1.0.0',
+      },
+      null,
+      2
+    )
+  );
 
   await fs.writeFile('README.md', '# Test Project');
   await execCommand('git', ['add', 'README.md']);
@@ -583,11 +637,11 @@ async function setupTestRepository(): Promise<void> {
 
 async function setupRepositoryWithDifferentTags(): Promise<void> {
   await setupTestRepository();
-  
+
   // Remove git tags and add custom ones
   await execCommand('git', ['tag', '-d', 'v1.0.0']);
   await execCommand('git', ['tag', 'release-1.0.0']);
-  
+
   await fs.mkdir('src', { recursive: true });
   await fs.writeFile('src/feature.js', 'export const feature = {};');
   await execCommand('git', ['add', 'src/feature.js']);
@@ -595,10 +649,17 @@ async function setupRepositoryWithDifferentTags(): Promise<void> {
 }
 
 async function setupRepositoryWithConventionalCommits(): Promise<void> {
-  await fs.writeFile('package.json', JSON.stringify({
-    name: 'conventional-commits-test',
-    version: '1.0.0'
-  }, null, 2));
+  await fs.writeFile(
+    'package.json',
+    JSON.stringify(
+      {
+        name: 'conventional-commits-test',
+        version: '1.0.0',
+      },
+      null,
+      2
+    )
+  );
 
   await fs.writeFile('README.md', '# Conventional Commits Test');
   await execCommand('git', ['add', 'README.md']);
@@ -613,7 +674,11 @@ async function setupRepositoryWithConventionalCommits(): Promise<void> {
 
   await fs.writeFile('src/api.js', 'export const api = {};');
   await execCommand('git', ['add', 'src/api.js']);
-  await execCommand('git', ['commit', '-m', 'feat(api): add new API endpoints for data management']);
+  await execCommand('git', [
+    'commit',
+    '-m',
+    'feat(api): add new API endpoints for data management',
+  ]);
 
   await fs.writeFile('src/fix.js', 'export const fix = {};');
   await execCommand('git', ['add', 'src/fix.js']);
@@ -621,7 +686,11 @@ async function setupRepositoryWithConventionalCommits(): Promise<void> {
 
   await fs.writeFile('src/perf.js', 'export const perf = {};');
   await execCommand('git', ['add', 'src/perf.js']);
-  await execCommand('git', ['commit', '-m', 'perf(db): fix performance issues in database queries']);
+  await execCommand('git', [
+    'commit',
+    '-m',
+    'perf(db): fix performance issues in database queries',
+  ]);
 
   await fs.writeFile('src/refactor.js', 'export const refactor = {};');
   await execCommand('git', ['add', 'src/refactor.js']);
@@ -630,22 +699,37 @@ async function setupRepositoryWithConventionalCommits(): Promise<void> {
 
 async function setupRepositoryWithBreakingChanges(): Promise<void> {
   await setupTestRepository();
-  
+
   // Add breaking changes
   await fs.writeFile('src/breaking.js', 'export const breaking = {};');
   await execCommand('git', ['add', 'src/breaking.js']);
-  await execCommand('git', ['commit', '-m', 'feat!: restructure API endpoints\n\nBREAKING CHANGE: API endpoints have been restructured']);
+  await execCommand('git', [
+    'commit',
+    '-m',
+    'feat!: restructure API endpoints\n\nBREAKING CHANGE: API endpoints have been restructured',
+  ]);
 
   await fs.writeFile('config.json', '{"version": 2}');
   await execCommand('git', ['add', 'config.json']);
-  await execCommand('git', ['commit', '-m', 'feat!: update configuration format\n\nBREAKING CHANGE: Configuration format has changed']);
+  await execCommand('git', [
+    'commit',
+    '-m',
+    'feat!: update configuration format\n\nBREAKING CHANGE: Configuration format has changed',
+  ]);
 }
 
 async function setupLargeRepository(): Promise<void> {
-  await fs.writeFile('package.json', JSON.stringify({
-    name: 'large-test-repo',
-    version: '1.0.0'
-  }, null, 2));
+  await fs.writeFile(
+    'package.json',
+    JSON.stringify(
+      {
+        name: 'large-test-repo',
+        version: '1.0.0',
+      },
+      null,
+      2
+    )
+  );
 
   await fs.writeFile('README.md', '# Large Test Repository');
   await execCommand('git', ['add', 'README.md']);

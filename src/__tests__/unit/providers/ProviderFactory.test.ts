@@ -1,12 +1,12 @@
 /// <reference path="../../globals.d.ts" />
 
-import { ProviderFactory } from '../../../src/core/llm/ProviderFactory';
-import { OpenAIProvider } from '../../../src/core/llm/providers/OpenAIProvider';
-import { AnthropicProvider } from '../../../src/core/llm/providers/AnthropicProvider';
-import { AzureProvider } from '../../../src/core/llm/providers/AzureProvider';
-import type { OpenAIConfig } from '../../../src/core/llm/providers/OpenAIProvider';
-import type { AnthropicConfig } from '../../../src/core/llm/providers/AnthropicProvider';
-import type { AzureConfig } from '../../../src/core/llm/providers/AzureProvider';
+import { ProviderFactory } from '../../../core/llm/ProviderFactory';
+import { OpenAIProvider } from '../../../core/llm/providers/OpenAIProvider';
+import { AnthropicProvider } from '../../../core/llm/providers/AnthropicProvider';
+import { AzureProvider } from '../../../core/llm/providers/AzureProvider';
+import type { OpenAIConfig } from '../../../core/llm/providers/OpenAIProvider';
+import type { AnthropicConfig } from '../../../core/llm/providers/AnthropicProvider';
+import type { AzureConfig } from '../../../core/llm/providers/AzureProvider';
 
 describe('ProviderFactory', () => {
   describe('createProvider', () => {
@@ -16,7 +16,7 @@ describe('ProviderFactory', () => {
         model: 'gpt-4',
         temperature: 0.1,
         maxTokens: 1000,
-        timeout: 30000
+        timeout: 30000,
       };
 
       const provider = ProviderFactory.createProvider('openai', config);
@@ -29,7 +29,7 @@ describe('ProviderFactory', () => {
         model: 'claude-3-haiku',
         temperature: 0.1,
         maxTokens: 1000,
-        timeout: 30000
+        timeout: 30000,
       };
 
       const provider = ProviderFactory.createProvider('anthropic', config);
@@ -43,7 +43,7 @@ describe('ProviderFactory', () => {
         temperature: 0.1,
         maxTokens: 1000,
         timeout: 30000,
-        endpoint: 'https://test.openai.azure.com'
+        endpoint: 'https://test.openai.azure.com',
       };
 
       const provider = ProviderFactory.createProvider('azure', config);
@@ -56,11 +56,12 @@ describe('ProviderFactory', () => {
         model: 'gpt-4',
         temperature: 0.1,
         maxTokens: 1000,
-        timeout: 30000
+        timeout: 30000,
       };
 
-      expect(() => ProviderFactory.createProvider('invalid' as any, config))
-        .toThrow('Unsupported provider type: invalid');
+      expect(() => ProviderFactory.createProvider('invalid' as any, config)).toThrow(
+        'Unsupported provider type: invalid'
+      );
     });
 
     it('should throw error for missing API key', () => {
@@ -69,35 +70,47 @@ describe('ProviderFactory', () => {
         model: 'gpt-4',
         temperature: 0.1,
         maxTokens: 1000,
-        timeout: 30000
+        timeout: 30000,
       };
 
-      expect(() => ProviderFactory.createProvider('openai', config))
-        .toThrow('No API key configured for openai.');
+      expect(() => ProviderFactory.createProvider('openai', config)).toThrow(
+        'No API key configured for openai.'
+      );
     });
   });
 
   describe('createProviderFromConfig', () => {
     it('should create OpenAI provider from config', () => {
-      const provider = ProviderFactory.createProviderFromConfig('openai', TEST_CONSTANTS.VALID_OPENAI_KEY);
+      const provider = ProviderFactory.createProviderFromConfig(
+        'openai',
+        TEST_CONSTANTS.VALID_OPENAI_KEY
+      );
       expect(provider).toBeInstanceOf(OpenAIProvider);
     });
 
     it('should create Anthropic provider from config', () => {
-      const provider = ProviderFactory.createProviderFromConfig('anthropic', TEST_CONSTANTS.VALID_ANTHROPIC_KEY);
+      const provider = ProviderFactory.createProviderFromConfig(
+        'anthropic',
+        TEST_CONSTANTS.VALID_ANTHROPIC_KEY
+      );
       expect(provider).toBeInstanceOf(AnthropicProvider);
     });
 
     it('should create Azure provider from config with endpoint', () => {
-      const provider = ProviderFactory.createProviderFromConfig('azure', TEST_CONSTANTS.VALID_AZURE_KEY, {
-        endpoint: 'https://test.openai.azure.com'
-      } as Partial<AzureConfig>);
+      const provider = ProviderFactory.createProviderFromConfig(
+        'azure',
+        TEST_CONSTANTS.VALID_AZURE_KEY,
+        {
+          endpoint: 'https://test.openai.azure.com',
+        } as Partial<AzureConfig>
+      );
       expect(provider).toBeInstanceOf(AzureProvider);
     });
 
     it('should throw error for Azure without endpoint', () => {
-      expect(() => ProviderFactory.createProviderFromConfig('azure', TEST_CONSTANTS.VALID_AZURE_KEY))
-        .toThrow('Azure endpoint is required');
+      expect(() =>
+        ProviderFactory.createProviderFromConfig('azure', TEST_CONSTANTS.VALID_AZURE_KEY)
+      ).toThrow('Azure endpoint is required');
     });
   });
 
@@ -131,10 +144,10 @@ describe('ProviderFactory', () => {
     it('should return provider config help', () => {
       const openaiHelp = ProviderFactory.getProviderConfigHelp('openai');
       expect(openaiHelp).toContain('https://platform.openai.com');
-      
+
       const anthropicHelp = ProviderFactory.getProviderConfigHelp('anthropic');
       expect(anthropicHelp).toContain('https://console.anthropic.com');
-      
+
       const azureHelp = ProviderFactory.getProviderConfigHelp('azure');
       expect(azureHelp).toContain('Azure OpenAI Service');
     });
