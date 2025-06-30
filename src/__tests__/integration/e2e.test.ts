@@ -20,6 +20,164 @@ import type { MagicReleaseConfig } from '../../types/index.js';
 const TEST_API_KEY =
   'sk-proj-abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890';
 
+// Mock factory functions for LLM responses
+interface MockLLMOptions {
+  type:
+    | 'standard'
+    | 'existing-changelog'
+    | 'various-commits'
+    | 'dry-run'
+    | 'empty-changelog'
+    | 'error';
+  errorMessage?: string;
+}
+
+function createMockLLMResponse(options: MockLLMOptions) {
+  if (options.type === 'error') {
+    return jest
+      .fn()
+      .mockRejectedValue(
+        new Error(options.errorMessage ?? 'Network error - API service unavailable')
+      );
+  }
+
+  return jest.fn().mockImplementation(async (_url, requestOptions) => {
+    const body = JSON.parse(requestOptions?.body ?? '{}');
+    const userMessage = body.messages?.find((m: any) => m.role === 'user')?.content ?? '';
+
+    // Handle categorization requests
+    if (
+      userMessage.includes('Categorize') ||
+      body.messages?.find((m: any) => m.content?.includes('categorization'))
+    ) {
+      return createCategorizationResponse(userMessage);
+    }
+
+    // Handle changelog generation requests
+    return createChangelogResponse(options.type);
+  });
+}
+
+function createCategorizationResponse(userMessage: string) {
+  const categorizations: Record<string, string> = {
+    authentication: 'Added',
+    'Add user': 'Added',
+    feature: 'Added',
+    'feat:': 'Added',
+    Add: 'Added',
+    'Test feature': 'Added',
+    Update: 'Changed',
+    Improve: 'Changed',
+    Fix: 'Fixed',
+    Resolve: 'Fixed',
+    'fix:': 'Fixed',
+    bug: 'Fixed',
+    Remove: 'Removed',
+    deprecate: 'Removed',
+    'Security:': 'Security',
+  };
+
+  // Find matching categorization
+  for (const [keyword, category] of Object.entries(categorizations)) {
+    if (userMessage.includes(keyword)) {
+      return {
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: category } }],
+        }),
+      };
+    }
+  }
+
+  // Default to Changed
+  return {
+    ok: true,
+    json: async () => ({
+      choices: [{ message: { content: 'Changed' } }],
+    }),
+  };
+}
+
+function createChangelogResponse(mockType: string) {
+  const changelogContent = {
+    standard: `## [2.0.0] - 2024-01-15
+
+### Added
+- User authentication system with JWT tokens
+- Advanced search functionality with filters
+- Real-time notifications for user activities
+
+### Changed  
+- Updated API endpoints for better REST compliance
+- Improved database query performance by 50%
+- Enhanced error handling across all modules
+
+### Fixed
+- Critical security vulnerability in user sessions
+- Memory leak in background processing
+- Incorrect validation for email addresses
+
+### Removed
+- Deprecated legacy API endpoints
+- Unused dependencies from package.json`,
+
+    'existing-changelog': `## [1.1.0] - 2024-01-15
+
+### Added
+- New feature implementations
+- Enhanced user interface
+
+### Fixed
+- Bug fixes and improvements`,
+
+    'various-commits': `## [1.1.0] - 2024-01-15
+
+### Added
+- Authentication system enhancements
+- User profile management features
+- Advanced database indexing
+
+### Changed
+- Updated API response format
+- Improved error handling mechanisms
+
+### Fixed
+- Authentication token validation issues
+- Database connection timeout problems
+
+### Security
+- Fixed critical security vulnerability in user sessions`,
+
+    'dry-run': `## [1.1.0] - 2024-01-15
+
+### Added
+- Test feature for dry run`,
+
+    'empty-changelog': `# Changelog
+
+All notable changes to this project will be documented in this file.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+`,
+  };
+
+  return {
+    ok: true,
+    json: async () => ({
+      choices: [
+        {
+          message: {
+            content:
+              changelogContent[mockType as keyof typeof changelogContent] ||
+              changelogContent.standard,
+          },
+        },
+      ],
+    }),
+  };
+}
+
 describe('End-to-End Integration Tests', () => {
   let testDir: string;
   let originalCwd: string;
@@ -69,87 +227,7 @@ describe('End-to-End Integration Tests', () => {
 
       // Mock LLM service response
       const originalFetch = global.fetch;
-      global.fetch = jest.fn().mockImplementation(async (_url, options) => {
-        const body = JSON.parse(options?.body ?? '{}');
-        const userMessage = body.messages?.find((m: any) => m.role === 'user')?.content ?? '';
-
-        // If this is a categorization request, return appropriate category
-        if (
-          userMessage.includes('Categorize') ||
-          body.messages?.find((m: any) => m.content?.includes('categorization'))
-        ) {
-          // Return different categories based on commit content
-          if (userMessage.includes('authentication') || userMessage.includes('Add user')) {
-            return {
-              ok: true,
-              json: async () => ({
-                choices: [{ message: { content: 'Added' } }],
-              }),
-            };
-          } else if (userMessage.includes('Update') || userMessage.includes('Improve')) {
-            return {
-              ok: true,
-              json: async () => ({
-                choices: [{ message: { content: 'Changed' } }],
-              }),
-            };
-          } else if (userMessage.includes('Fix') || userMessage.includes('Resolve')) {
-            return {
-              ok: true,
-              json: async () => ({
-                choices: [{ message: { content: 'Fixed' } }],
-              }),
-            };
-          } else if (userMessage.includes('Remove') || userMessage.includes('deprecate')) {
-            return {
-              ok: true,
-              json: async () => ({
-                choices: [{ message: { content: 'Removed' } }],
-              }),
-            };
-          }
-          // Default to Changed for categorization
-          return {
-            ok: true,
-            json: async () => ({
-              choices: [{ message: { content: 'Changed' } }],
-            }),
-          };
-        }
-
-        // For changelog generation requests
-        return {
-          ok: true,
-          json: async () => ({
-            choices: [
-              {
-                message: {
-                  content: `## [2.0.0] - 2024-01-15
-
-### Added
-- User authentication system with JWT tokens
-- Advanced search functionality with filters
-- Real-time notifications for user activities
-
-### Changed  
-- Updated API endpoints for better REST compliance
-- Improved database query performance by 50%
-- Enhanced error handling across all modules
-
-### Fixed
-- Critical security vulnerability in user sessions
-- Memory leak in background processing
-- Incorrect validation for email addresses
-
-### Removed
-- Deprecated legacy API endpoints
-- Unused dependencies from package.json`,
-                },
-              },
-            ],
-          }),
-        };
-      });
+      global.fetch = createMockLLMResponse({ type: 'standard' });
 
       const magicRelease = new MagicRelease(config, testDir);
 
@@ -218,59 +296,7 @@ All notable changes to this project will be documented in this file.
 
       // Mock LLM response for new changes
       const originalFetch = global.fetch;
-      global.fetch = jest.fn().mockImplementation(async (_url, options) => {
-        const body = JSON.parse(options?.body ?? '{}');
-        const userMessage = body.messages?.find((m: any) => m.role === 'user')?.content ?? '';
-
-        // If this is a categorization request, return appropriate category
-        if (
-          userMessage.includes('Categorize') ||
-          body.messages?.find((m: any) => m.content?.includes('categorization'))
-        ) {
-          if (userMessage.includes('feature') || userMessage.includes('Add')) {
-            return {
-              ok: true,
-              json: async () => ({
-                choices: [{ message: { content: 'Added' } }],
-              }),
-            };
-          } else if (userMessage.includes('Fix') || userMessage.includes('bug')) {
-            return {
-              ok: true,
-              json: async () => ({
-                choices: [{ message: { content: 'Fixed' } }],
-              }),
-            };
-          }
-          return {
-            ok: true,
-            json: async () => ({
-              choices: [{ message: { content: 'Changed' } }],
-            }),
-          };
-        }
-
-        // For changelog generation requests
-        return {
-          ok: true,
-          json: async () => ({
-            choices: [
-              {
-                message: {
-                  content: `## [1.1.0] - 2024-01-15
-
-### Added
-- New feature implementations
-- Enhanced user interface
-
-### Fixed
-- Bug fixes and improvements`,
-                },
-              },
-            ],
-          }),
-        };
-      });
+      global.fetch = createMockLLMResponse({ type: 'existing-changelog' });
 
       const magicRelease = new MagicRelease(config, testDir);
 
@@ -313,82 +339,7 @@ All notable changes to this project will be documented in this file.
 
       // Mock LLM response
       const originalFetch = global.fetch;
-      global.fetch = jest.fn().mockImplementation(async (_url, options) => {
-        const body = JSON.parse(options?.body ?? '{}');
-        const userMessage = body.messages?.find((m: any) => m.role === 'user')?.content ?? '';
-
-        // If this is a categorization request, return appropriate category
-        if (
-          userMessage.includes('Categorize') ||
-          body.messages?.find((m: any) => m.content?.includes('categorization'))
-        ) {
-          if (userMessage.includes('feat:') || userMessage.includes('Add')) {
-            return {
-              ok: true,
-              json: async () => ({
-                choices: [{ message: { content: 'Added' } }],
-              }),
-            };
-          } else if (userMessage.includes('fix:') || userMessage.includes('Resolve')) {
-            return {
-              ok: true,
-              json: async () => ({
-                choices: [{ message: { content: 'Fixed' } }],
-              }),
-            };
-          } else if (userMessage.includes('Security:')) {
-            return {
-              ok: true,
-              json: async () => ({
-                choices: [{ message: { content: 'Security' } }],
-              }),
-            };
-          } else if (userMessage.includes('Improve')) {
-            return {
-              ok: true,
-              json: async () => ({
-                choices: [{ message: { content: 'Changed' } }],
-              }),
-            };
-          }
-          return {
-            ok: true,
-            json: async () => ({
-              choices: [{ message: { content: 'Changed' } }],
-            }),
-          };
-        }
-
-        // For changelog generation requests
-        return {
-          ok: true,
-          json: async () => ({
-            choices: [
-              {
-                message: {
-                  content: `## [1.1.0] - 2024-01-15
-
-### Added
-- Authentication system enhancements
-- User profile management features
-- Advanced database indexing
-
-### Changed
-- Updated API response format
-- Improved error handling mechanisms
-
-### Fixed
-- Authentication token validation issues
-- Database connection timeout problems
-
-### Security
-- Fixed critical security vulnerability in user sessions`,
-                },
-              },
-            ],
-          }),
-        };
-      });
+      global.fetch = createMockLLMResponse({ type: 'various-commits' });
 
       const magicRelease = new MagicRelease(config, testDir);
 
@@ -428,45 +379,7 @@ All notable changes to this project will be documented in this file.
 
       // Mock LLM response
       const originalFetch = global.fetch;
-      global.fetch = jest.fn().mockImplementation(async (_url, options) => {
-        const body = JSON.parse(options?.body ?? '{}');
-        const userMessage = body.messages?.find((m: any) => m.role === 'user')?.content ?? '';
-
-        // If this is a categorization request, return appropriate category
-        if (
-          userMessage.includes('Categorize') ||
-          body.messages?.find((m: any) => m.content?.includes('categorization'))
-        ) {
-          if (userMessage.includes('Test feature')) {
-            return {
-              ok: true,
-              json: async () => ({
-                choices: [{ message: { content: 'Added' } }],
-              }),
-            };
-          }
-          return {
-            ok: true,
-            json: async () => ({
-              choices: [{ message: { content: 'Changed' } }],
-            }),
-          };
-        }
-
-        // For changelog generation requests
-        return {
-          ok: true,
-          json: async () => ({
-            choices: [
-              {
-                message: {
-                  content: `## [1.1.0] - 2024-01-15\n\n### Added\n- Test feature for dry run`,
-                },
-              },
-            ],
-          }),
-        };
-      });
+      global.fetch = createMockLLMResponse({ type: 'dry-run' });
 
       const magicRelease = new MagicRelease(config, testDir);
 
@@ -513,9 +426,10 @@ All notable changes to this project will be documented in this file.
 
       // Mock LLM service error - make fetch throw an error
       const originalFetch = global.fetch;
-      global.fetch = jest
-        .fn()
-        .mockRejectedValue(new Error('Network error - API service unavailable'));
+      global.fetch = createMockLLMResponse({
+        type: 'error',
+        errorMessage: 'Network error - API service unavailable',
+      });
 
       const magicRelease = new MagicRelease(config, testDir);
 
@@ -553,24 +467,7 @@ All notable changes to this project will be documented in this file.
 
       // Mock LLM response for empty changelog
       const originalFetch = global.fetch;
-      global.fetch = jest.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          choices: [
-            {
-              message: {
-                content: `# Changelog
-
-All notable changes to this project will be documented in this file.
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-`,
-              },
-            },
-          ],
-        }),
-      });
+      global.fetch = createMockLLMResponse({ type: 'empty-changelog' });
 
       const magicRelease = new MagicRelease(config, testDir);
 
@@ -586,16 +483,82 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 });
 
 // Helper functions
-async function execCommand(command: string, args: string[]): Promise<void> {
+async function execCommand(command: string, args: string[], timeoutMs = 30000): Promise<void> {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, { stdio: 'pipe' });
 
+    let stdout = '';
+    let stderr = '';
+    let timeoutId: NodeJS.Timeout | null = null;
+    let isResolved = false;
+
+    // Set up timeout
+    if (timeoutMs > 0) {
+      timeoutId = setTimeout(() => {
+        if (!isResolved) {
+          isResolved = true;
+          child.kill('SIGTERM');
+          reject(
+            new Error(
+              `Command timed out after ${timeoutMs}ms: ${command} ${args.join(' ')}\n` +
+                `stdout: ${stdout}\n` +
+                `stderr: ${stderr}`
+            )
+          );
+        }
+      }, timeoutMs);
+    }
+
+    // Capture stdout and stderr
+    child.stdout?.on('data', data => {
+      stdout += data.toString();
+    });
+
+    child.stderr?.on('data', data => {
+      stderr += data.toString();
+    });
+
+    // Handle process completion
     child.on('close', code => {
+      if (isResolved) return;
+      isResolved = true;
+
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+
       if (code === 0) {
         resolve();
       } else {
-        reject(new Error(`Command failed with exit code ${code}`));
+        const errorMessage = [
+          `Command failed with exit code ${code}: ${command} ${args.join(' ')}`,
+          stdout && `stdout: ${stdout.trim()}`,
+          stderr && `stderr: ${stderr.trim()}`,
+        ]
+          .filter(Boolean)
+          .join('\n');
+
+        reject(new Error(errorMessage));
       }
+    });
+
+    // Handle process errors (e.g., command not found)
+    child.on('error', error => {
+      if (isResolved) return;
+      isResolved = true;
+
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+
+      reject(
+        new Error(
+          `Failed to spawn command: ${command} ${args.join(' ')}\n` +
+            `Error: ${error.message}\n` +
+            `stdout: ${stdout}\n` +
+            `stderr: ${stderr}`
+        )
+      );
     });
   });
 }

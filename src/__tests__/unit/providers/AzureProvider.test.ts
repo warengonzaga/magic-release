@@ -36,13 +36,15 @@ describe('AzureProvider', () => {
       process.env['AZURE_OPENAI_ENDPOINT'] = 'https://env-endpoint.azure.com';
       const { endpoint, ...configWithoutEndpoint } = mockConfig;
 
-      const envProvider = new AzureProvider({
-        ...configWithoutEndpoint,
-        endpoint: undefined as any, // Allow TypeScript to accept missing endpoint for test
-      });
-      expect(envProvider).toBeInstanceOf(AzureProvider);
-
-      delete process.env['AZURE_OPENAI_ENDPOINT'];
+      try {
+        const envProvider = new AzureProvider({
+          ...configWithoutEndpoint,
+          endpoint: undefined as any, // Allow TypeScript to accept missing endpoint for test
+        });
+        expect(envProvider).toBeInstanceOf(AzureProvider);
+      } finally {
+        delete process.env['AZURE_OPENAI_ENDPOINT'];
+      }
     });
 
     it('should use default API version if not provided', () => {

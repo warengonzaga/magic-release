@@ -6,9 +6,25 @@
 describe('Changelog Functionality', () => {
   describe('Changelog Format Validation', () => {
     it('should validate Keep a Changelog format', () => {
-      const validHeaders = [
-        '# Changelog',
+      // Test main changelog header
+      const mainHeader = '# Changelog';
+      expect(mainHeader).toMatch(/^# Changelog$/);
+
+      // Test version headers with semantic versioning and ISO date format
+      const versionHeaders = [
         '## [1.0.0] - 2023-01-01',
+        '## [2.1.3] - 2024-12-31',
+        '## [0.1.0] - 2022-01-15',
+        '## [Unreleased]',
+      ];
+
+      versionHeaders.forEach(header => {
+        // Version headers should match: ## [version] - date OR ## [Unreleased]
+        expect(header).toMatch(/^## \[(?:\d+\.\d+\.\d+|Unreleased)\](?:\s-\s\d{4}-\d{2}-\d{2})?$/);
+      });
+
+      // Test section headers (Keep a Changelog standard sections)
+      const sectionHeaders = [
         '### Added',
         '### Changed',
         '### Deprecated',
@@ -17,9 +33,39 @@ describe('Changelog Functionality', () => {
         '### Security',
       ];
 
-      validHeaders.forEach(header => {
-        expect(header).toBeTruthy();
-        expect(header.length).toBeGreaterThan(0);
+      const validSectionNames = ['Added', 'Changed', 'Deprecated', 'Removed', 'Fixed', 'Security'];
+
+      sectionHeaders.forEach(header => {
+        // Section headers should match: ### [ValidSectionName]
+        expect(header).toMatch(/^### (Added|Changed|Deprecated|Removed|Fixed|Security)$/);
+
+        // Extract section name and verify it's in the approved list
+        const sectionMatch = header.match(/^### (.+)$/);
+        expect(sectionMatch).toBeTruthy();
+        if (sectionMatch) {
+          expect(validSectionNames).toContain(sectionMatch[1]);
+        }
+      });
+
+      // Test invalid headers to ensure validation works
+      const invalidHeaders = [
+        '## 1.0.0 - 2023-01-01', // Missing brackets
+        '### InvalidSection', // Not a standard section
+        '# changelog', // Wrong case
+        '## [1.0] - 2023-01-01', // Invalid version format
+        '### added', // Wrong case
+      ];
+
+      invalidHeaders.forEach(header => {
+        if (header.startsWith('## ')) {
+          expect(header).not.toMatch(
+            /^## \[(?:\d+\.\d+\.\d+|Unreleased)\](?:\s-\s\d{4}-\d{2}-\d{2})?$/
+          );
+        } else if (header.startsWith('### ')) {
+          expect(header).not.toMatch(/^### (Added|Changed|Deprecated|Removed|Fixed|Security)$/);
+        } else if (header.startsWith('# ')) {
+          expect(header).not.toMatch(/^# Changelog$/);
+        }
       });
     });
 
@@ -98,16 +144,6 @@ describe('Changelog Functionality', () => {
   });
 
   describe('Changelog Entry Generation', () => {
-    it('should generate proper section headers', () => {
-      const sections = ['Added', 'Changed', 'Deprecated', 'Removed', 'Fixed', 'Security'];
-
-      sections.forEach(section => {
-        const header = `### ${section}`;
-        expect(header).toBe(`### ${section}`);
-        expect(header.startsWith('### ')).toBe(true);
-      });
-    });
-
     it('should format commit entries', () => {
       const commits = [
         { description: 'Add new feature', scope: 'core' },
@@ -133,9 +169,15 @@ describe('Changelog Functionality', () => {
       const date = '2023-01-01';
       const versionHeader = `## [${version}] - ${date}`;
 
-      expect(versionHeader).toBe('## [1.0.0] - 2023-01-01');
+      // Test that the version header contains the expected components
       expect(versionHeader).toContain(version);
       expect(versionHeader).toContain(date);
+
+      // Test that the version header follows the correct Keep a Changelog format
+      expect(versionHeader).toMatch(/^## \[\d+\.\d+\.\d+\] - \d{4}-\d{2}-\d{2}$/);
+
+      // Test that the version and date are properly bracketed and formatted
+      expect(versionHeader).toMatch(/^## \[1\.0\.0\] - 2023-01-01$/);
     });
   });
 

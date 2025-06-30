@@ -3,94 +3,319 @@
  * These tests validate provider instantiation and basic functionality
  */
 
+import { ProviderFactory } from '../../core/llm/providers/ProviderFactory.js';
+import { OpenAIProvider } from '../../core/llm/providers/OpenAIProvider.js';
+import { AnthropicProvider } from '../../core/llm/providers/AnthropicProvider.js';
+import { AzureProvider } from '../../core/llm/providers/AzureProvider.js';
+import { PROVIDER_CONFIGS } from '../../core/llm/providers/ProviderInterface.js';
+import type { MagicReleaseConfig } from '../../types/index.js';
+
 describe('Provider Tests', () => {
-  describe('Provider Types', () => {
-    it('should support OpenAI provider', () => {
-      expect('openai').toBe('openai');
+  describe('Provider Instantiation', () => {
+    it('should create OpenAI provider instance correctly', () => {
+      const config: MagicReleaseConfig = {
+        llm: {
+          provider: 'openai',
+          apiKey: 'sk-test1234567890abcdef1234567890abcdef1234567890abcdef', // 48+ chars
+          model: 'gpt-4o-mini',
+          temperature: 0.1,
+        },
+        git: { tagPattern: 'v*', remote: 'origin' },
+        changelog: { filename: 'CHANGELOG.md', includeCommitLinks: false },
+      };
+
+      const provider = ProviderFactory.createProvider(config);
+
+      expect(provider).toBeInstanceOf(OpenAIProvider);
+      expect(provider.constructor.name).toBe('OpenAIProvider');
     });
 
-    it('should support Anthropic provider', () => {
-      expect('anthropic').toBe('anthropic');
+    it('should create Anthropic provider instance correctly', () => {
+      const config: MagicReleaseConfig = {
+        llm: {
+          provider: 'anthropic',
+          apiKey: 'sk-ant-test1234567890abcdef1234567890abcdef1234567890abcdef',
+          model: 'claude-3-haiku',
+          temperature: 0.1,
+        },
+        git: { tagPattern: 'v*', remote: 'origin' },
+        changelog: { filename: 'CHANGELOG.md', includeCommitLinks: false },
+      };
+
+      const provider = ProviderFactory.createProvider(config);
+
+      expect(provider).toBeInstanceOf(AnthropicProvider);
+      expect(provider.constructor.name).toBe('AnthropicProvider');
     });
 
-    it('should support Azure provider', () => {
-      expect('azure').toBe('azure');
+    it('should create Azure provider instance correctly', () => {
+      const config: MagicReleaseConfig = {
+        llm: {
+          provider: 'azure',
+          apiKey: 'abcd1234567890efgh1234567890ijkl',
+          model: 'gpt-4',
+          temperature: 0.1,
+          endpoint: 'https://test.openai.azure.com/',
+        },
+        git: { tagPattern: 'v*', remote: 'origin' },
+        changelog: { filename: 'CHANGELOG.md', includeCommitLinks: false },
+      };
+
+      const provider = ProviderFactory.createProvider(config);
+
+      expect(provider).toBeInstanceOf(AzureProvider);
+      expect(provider.constructor.name).toBe('AzureProvider');
+    });
+
+    it('should throw error for invalid provider type', () => {
+      const config = {
+        llm: {
+          provider: 'invalid-provider' as any,
+          apiKey: 'test-key',
+        },
+        git: { tagPattern: 'v*', remote: 'origin' },
+        changelog: { filename: 'CHANGELOG.md', includeCommitLinks: false },
+      };
+
+      expect(() => ProviderFactory.createProvider(config)).toThrow();
     });
   });
 
-  describe('API Key Validation', () => {
-    it('should validate OpenAI API key format', () => {
-      const validKey = 'sk-1234567890abcdef1234567890abcdef1234567890abcdef12';
-      const invalidKey = 'invalid-key';
+  describe('Provider Configuration Validation', () => {
+    it('should validate OpenAI configuration correctly', () => {
+      const config = PROVIDER_CONFIGS['openai']!;
 
-      // Simple format validation
-      expect(validKey.startsWith('sk-')).toBe(true);
-      expect(validKey.length).toBeGreaterThan(20);
-      expect(invalidKey.startsWith('sk-')).toBe(false);
+      expect(config.name).toBe('openai');
+      expect(config.supportedModels).toContain('gpt-4o-mini');
+      expect(config.supportedModels).toContain('gpt-4');
+      expect(config.defaultModel).toBe('gpt-4o-mini');
+      expect(config.maxTokensLimit).toBe(4096);
+      expect(config.temperatureRange).toEqual([0, 2]);
+      expect(config.apiKeyPattern).toBeInstanceOf(RegExp);
+
+      // Test API key pattern validation
+      expect(
+        config.apiKeyPattern.test('sk-test1234567890abcdef1234567890abcdef1234567890abcdef')
+      ).toBe(true);
+      expect(config.apiKeyPattern.test('invalid-key')).toBe(false);
     });
 
-    it('should validate Anthropic API key format', () => {
-      const validKey = 'sk-ant-1234567890abcdef1234567890abcdef1234567890';
-      const invalidKey = 'invalid-key';
+    it('should validate Anthropic configuration correctly', () => {
+      const config = PROVIDER_CONFIGS['anthropic']!;
 
-      // Simple format validation
-      expect(validKey.startsWith('sk-ant-')).toBe(true);
-      expect(validKey.length).toBeGreaterThan(20);
-      expect(invalidKey.startsWith('sk-ant-')).toBe(false);
+      expect(config.name).toBe('anthropic');
+      expect(config.supportedModels).toContain('claude-3-haiku');
+      expect(config.supportedModels).toContain('claude-3-sonnet');
+      expect(config.defaultModel).toBe('claude-3-haiku');
+      expect(config.maxTokensLimit).toBe(4096);
+      expect(config.temperatureRange).toEqual([0, 1]);
+
+      // Test API key pattern validation
+      expect(
+        config.apiKeyPattern.test('sk-ant-test1234567890abcdef1234567890abcdef1234567890abcdef')
+      ).toBe(true);
+      expect(config.apiKeyPattern.test('invalid-key')).toBe(false);
     });
 
-    it('should validate Azure API key format', () => {
-      const validKey = '1234567890abcdef1234567890abcdef';
-      const invalidKey = 'invalid-key';
+    it('should validate Azure configuration correctly', () => {
+      const config = PROVIDER_CONFIGS['azure']!;
 
-      // Simple format validation
-      expect(validKey.length).toBe(32);
-      expect(/^[a-f0-9]{32}$/.test(validKey)).toBe(true);
-      expect(/^[a-f0-9]{32}$/.test(invalidKey)).toBe(false);
+      expect(config.name).toBe('azure');
+      expect(config.supportedModels).toContain('gpt-4');
+      expect(config.supportedModels).toContain('gpt-35-turbo');
+      expect(config.defaultModel).toBe('gpt-4');
+      expect(config.maxTokensLimit).toBe(4096);
+      expect(config.temperatureRange).toEqual([0, 2]);
+
+      // Test API key pattern validation
+      expect(config.apiKeyPattern.test('abcd1234567890efgh1234567890ijkl')).toBe(true);
+      expect(config.apiKeyPattern.test('invalid-key')).toBe(false);
     });
   });
 
-  describe('Provider Configuration', () => {
-    it('should have required configuration for OpenAI', () => {
-      const config = {
-        name: 'OpenAI',
-        models: ['gpt-4', 'gpt-3.5-turbo'],
-        defaultModel: 'gpt-4',
-        apiKeyPattern: /^sk-[A-Za-z0-9]{48,}$/,
-      };
+  describe('Provider API Key Validation', () => {
+    it('should reject invalid OpenAI API keys', () => {
+      const invalidKeys = [
+        'invalid-key',
+        'sk-short',
+        'wrong-prefix-1234567890abcdef1234567890abcdef',
+        '',
+        'sk-',
+      ];
 
-      expect(config.name).toBe('OpenAI');
-      expect(config.models).toContain('gpt-4');
-      expect(config.defaultModel).toBe('gpt-4');
-      expect(config.apiKeyPattern).toBeInstanceOf(RegExp);
+      expect(() => {
+        new OpenAIProvider({ apiKey: 'invalid-key' });
+      }).toThrow();
+
+      invalidKeys.forEach(key => {
+        expect(() => {
+          new OpenAIProvider({ apiKey: key });
+        }).toThrow();
+      });
     });
 
-    it('should have required configuration for Anthropic', () => {
-      const config = {
-        name: 'Anthropic',
-        models: ['claude-3-sonnet-20240229', 'claude-3-haiku-20240307'],
-        defaultModel: 'claude-3-sonnet-20240229',
-        apiKeyPattern: /^sk-ant-[A-Za-z0-9]{95,}$/,
-      };
+    it('should reject invalid Anthropic API keys', () => {
+      const invalidKeys = [
+        'invalid-key',
+        'sk-ant-short',
+        'sk-wrong-prefix-1234567890abcdef',
+        '',
+        'sk-ant-',
+      ];
 
-      expect(config.name).toBe('Anthropic');
-      expect(config.models).toContain('claude-3-sonnet-20240229');
-      expect(config.defaultModel).toBe('claude-3-sonnet-20240229');
-      expect(config.apiKeyPattern).toBeInstanceOf(RegExp);
+      invalidKeys.forEach(key => {
+        expect(() => {
+          new AnthropicProvider({ apiKey: key });
+        }).toThrow();
+      });
     });
 
-    it('should have required configuration for Azure', () => {
-      const config = {
-        name: 'Azure OpenAI',
-        models: ['gpt-4', 'gpt-35-turbo'],
-        defaultModel: 'gpt-4',
-        apiKeyPattern: /^[a-f0-9]{32}$/,
-      };
+    it('should reject invalid Azure API keys', () => {
+      const invalidKeys = [
+        'invalid-key-with-dashes', // contains dashes
+        'short', // too short (< 32 chars)
+        'has-special-chars!@#$%^&*()', // contains special chars
+        '', // empty
+        'underscores_not_allowed_in_azure_keys_test', // contains underscores
+      ];
 
-      expect(config.name).toBe('Azure OpenAI');
-      expect(config.models).toContain('gpt-4');
-      expect(config.defaultModel).toBe('gpt-4');
-      expect(config.apiKeyPattern).toBeInstanceOf(RegExp);
+      invalidKeys.forEach(key => {
+        expect(() => {
+          new AzureProvider({
+            apiKey: key,
+            endpoint: 'https://test.openai.azure.com/',
+          });
+        }).toThrow();
+      });
+    });
+  });
+
+  describe('Provider Model Support', () => {
+    it('should support OpenAI models correctly', () => {
+      const provider = new OpenAIProvider({
+        apiKey: 'sk-test1234567890abcdef1234567890abcdef1234567890abcdef', // 48+ chars
+      });
+
+      const config = PROVIDER_CONFIGS['openai']!;
+
+      // Test supported models
+      expect(config.supportedModels).toContain('gpt-4o-mini');
+      expect(config.supportedModels).toContain('gpt-4');
+      expect(config.supportedModels).toContain('gpt-3.5-turbo');
+
+      // Provider should be created successfully with valid key
+      expect(provider).toBeInstanceOf(OpenAIProvider);
+    });
+
+    it('should support Anthropic models correctly', () => {
+      const provider = new AnthropicProvider({
+        apiKey: 'sk-ant-test1234567890abcdef1234567890abcdef1234567890abcdef',
+      });
+
+      const config = PROVIDER_CONFIGS['anthropic']!;
+
+      // Test supported models
+      expect(config.supportedModels).toContain('claude-3-haiku');
+      expect(config.supportedModels).toContain('claude-3-sonnet');
+      expect(config.supportedModels).toContain('claude-3-opus');
+
+      // Provider should be created successfully with valid key
+      expect(provider).toBeInstanceOf(AnthropicProvider);
+    });
+
+    it('should support Azure models correctly', () => {
+      const provider = new AzureProvider({
+        apiKey: 'abcd1234567890efgh1234567890ijkl',
+        endpoint: 'https://test.openai.azure.com/',
+      });
+
+      const config = PROVIDER_CONFIGS['azure']!;
+
+      // Test supported models
+      expect(config.supportedModels).toContain('gpt-4');
+      expect(config.supportedModels).toContain('gpt-4-turbo');
+      expect(config.supportedModels).toContain('gpt-35-turbo');
+
+      // Provider should be created successfully with valid key
+      expect(provider).toBeInstanceOf(AzureProvider);
+    });
+  });
+
+  describe('Provider Validation Methods', () => {
+    it('should use OpenAI provider validateApiKey method correctly', async () => {
+      const provider = new OpenAIProvider({
+        apiKey: 'sk-test1234567890abcdef1234567890abcdef1234567890abcdef',
+      });
+
+      // Test valid key format
+      const validResult = await provider.validateApiKey(
+        'sk-test1234567890abcdef1234567890abcdef1234567890abcdef'
+      );
+      expect(validResult.valid).toBe(true);
+      expect(validResult.message).toContain('valid');
+
+      // Test invalid key format
+      const invalidResult = await provider.validateApiKey('invalid-key');
+      expect(invalidResult.valid).toBe(false);
+      expect(invalidResult.message).toContain('Invalid OpenAI API key format');
+    });
+
+    it('should use Anthropic provider validateApiKey method correctly', async () => {
+      const provider = new AnthropicProvider({
+        apiKey: 'sk-ant-test1234567890abcdef1234567890abcdef1234567890abcdef',
+      });
+
+      // Test valid key format
+      const validResult = await provider.validateApiKey(
+        'sk-ant-test1234567890abcdef1234567890abcdef1234567890abcdef'
+      );
+      expect(validResult.valid).toBe(true);
+      expect(validResult.message).toContain('valid');
+
+      // Test invalid key format
+      const invalidResult = await provider.validateApiKey('invalid-key');
+      expect(invalidResult.valid).toBe(false);
+      expect(invalidResult.message).toContain('Invalid Anthropic API key format');
+    });
+
+    it('should use Azure provider validateApiKey method correctly', async () => {
+      const provider = new AzureProvider({
+        apiKey: 'abcd1234567890efgh1234567890ijkl',
+        endpoint: 'https://test.openai.azure.com/',
+      });
+
+      // Test valid key format
+      const validResult = await provider.validateApiKey('abcd1234567890efgh1234567890ijkl');
+      expect(validResult.valid).toBe(true);
+      expect(validResult.message).toContain('valid');
+
+      // Test invalid key format
+      const invalidResult = await provider.validateApiKey('invalid-key');
+      expect(invalidResult.valid).toBe(false);
+      expect(invalidResult.message).toContain('Invalid Azure API key format');
+    });
+
+    it('should validate model support using provider methods', () => {
+      const openaiProvider = new OpenAIProvider({
+        apiKey: 'sk-test1234567890abcdef1234567890abcdef1234567890abcdef',
+      });
+      const anthropicProvider = new AnthropicProvider({
+        apiKey: 'sk-ant-test1234567890abcdef1234567890abcdef1234567890abcdef',
+      });
+      const azureProvider = new AzureProvider({
+        apiKey: 'abcd1234567890efgh1234567890ijkl',
+        endpoint: 'https://test.openai.azure.com/',
+      });
+
+      // Test model validation using real provider methods
+      expect(openaiProvider.validateModel('gpt-4')).toBe(true);
+      expect(openaiProvider.validateModel('invalid-model')).toBe(false);
+
+      expect(anthropicProvider.validateModel('claude-3-haiku')).toBe(true);
+      expect(anthropicProvider.validateModel('invalid-model')).toBe(false);
+
+      expect(azureProvider.validateModel('gpt-4')).toBe(true);
+      expect(azureProvider.validateModel('invalid-model')).toBe(false);
     });
   });
 

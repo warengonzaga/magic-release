@@ -77,16 +77,24 @@ describe('CLI Integration Tests', () => {
   });
 
   describe('API key management', () => {
-    it('should handle setting API key', async () => {
-      const result = await runCLI(['--set-key', TEST_API_KEY]);
-      // The command either succeeds with validation OR fails with invalid key error
-      if (result.exitCode === 0) {
-        expect(result.stdout).toMatch(/API key|Validating|saved/i);
-      } else {
-        // Expect validation error for test key
-        expect(result.stderr).toMatch(/Invalid API key|check your API key/i);
-        expect(result.exitCode).toBe(2);
-      }
+    it('should reject invalid API key with proper error', async () => {
+      const invalidApiKey = 'invalid-key-123';
+      const result = await runCLI(['--set-key', invalidApiKey]);
+
+      expect(result.exitCode).toBe(2);
+      expect(result.stderr).toMatch(/Invalid API key|check your API key/i);
+    });
+
+    it('should accept valid API key format and attempt validation', async () => {
+      // Use a properly formatted OpenAI-style API key that will fail validation but pass format checks
+      const validFormatKey = `sk-proj-${'a'.repeat(48)}T3BlbkFJ${'b'.repeat(44)}`;
+      const result = await runCLI(['--set-key', validFormatKey]);
+
+      // Since this is a test key, it should fail validation but with proper error messaging
+      expect(result.exitCode).toBe(2);
+      expect(result.stderr).toMatch(/Invalid API key|check your API key|validation|unauthorized/i);
+      // Should NOT be a format error
+      expect(result.stderr).not.toMatch(/format|malformed/i);
     });
 
     it('should handle setting API key unsafe', async () => {
@@ -112,7 +120,7 @@ describe('CLI Integration Tests', () => {
       await rimraf('.git');
 
       // Set up API key first
-      await runCLI(['--set-api-key-unsafe', TEST_API_KEY]);
+      await runCLI(['--set-key-unsafe', TEST_API_KEY]);
 
       const result = await runCLI([]);
       // The CLI might handle this gracefully and show empty changelog
@@ -127,7 +135,7 @@ describe('CLI Integration Tests', () => {
       await execCommand('git', ['config', '--unset', 'user.email']);
 
       // Set up API key first
-      await runCLI(['--set-api-key-unsafe', 'test-key']);
+      await runCLI(['--set-key-unsafe', 'test-key']);
 
       const result = await runCLI([]);
       // The CLI should handle this gracefully
