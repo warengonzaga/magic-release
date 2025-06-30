@@ -1,5 +1,5 @@
 /**
- * Simplified integration tests for MagicRelease core functionality
+ * Simplified integration tests for Magic Release core functionality
  * Tests the main workflow without CLI complexity
  */
 
@@ -19,7 +19,7 @@ jest.unmock('fs');
 const TEST_API_KEY = 'sk-proj-abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890';
 const TEST_ANTHROPIC_KEY = 'sk-ant-api03-abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
-describe('MagicRelease Integration Tests', () => {
+describe('Magic Release Integration Tests', () => {
   let testDir: string;
   let originalCwd: string;
 

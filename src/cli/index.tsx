@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * MagicRelease CLI Entry Point
+ * Magic Release CLI Entry Point
  * Following the same pattern as Magic Commit but with TypeScript
  */
 
@@ -23,34 +23,34 @@ import App from './App.js';
 
 const cli = meow(
   `
-	${chalk.cyan('🪄 MagicRelease')} - AI-powered changelog generator
+	🪄  ${chalk.cyan('Magic Release')} - AI-powered changelog generator
 
 	Usage
 		$ magicr [options]
 
 	Setup Commands
-		-s, --set-key <key>      Set API key (auto-detects provider)
-		-c, --config             Configure settings interactively
-		-i, --init               Initialize project configuration
-		--provider [name]        Switch provider or list all providers
+		-s, --set-key <key>       Set API key (auto-detects provider)
+		-c, --config              Configure settings interactively
+		-i, --init                Initialize project configuration
+		--provider [name]         Switch provider or list all providers
 
 	Generation Options
-		--from <tag/commit>      Start from specific tag/commit
-		--to <tag/commit>        End at specific tag/commit
-		--dry-run               Preview changes without writing files
+		--from <tag/commit>       Start from specific tag/commit
+		--to <tag/commit>         End at specific tag/commit
+		--dry-run                 Preview changes without writing files
 
 	Other Options
-		-v, --verbose           Enable verbose logging
-		--debug                 Enable debug logging
-		--help                  Show help
-		--version               Show version
+		-v, --verbose             Enable verbose logging
+		--debug                   Enable debug logging
+		--help                    Show help
+		--version                 Show version
 
 	Examples
-		$ magicr                                    # Generate changelog
-		$ magicr --set-key sk-your-openai-key      # Setup API key
-		$ magicr --config                          # Interactive setup
-		$ magicr --from v1.0.0 --to v2.0.0        # Specific range
-		$ magicr --dry-run --verbose               # Preview with logs
+		$ magicr                                # Generate changelog
+		$ magicr --set-key sk-your-openai-key   # Setup API key
+		$ magicr --config                       # Interactive setup
+		$ magicr --from v1.0.0 --to v2.0.0      # Specific range
+		$ magicr --dry-run --verbose            # Preview with logs
 
 	For advanced options, visit: https://github.com/warengonzaga/magic-release
 `,

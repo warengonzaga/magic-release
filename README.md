@@ -1,12 +1,22 @@
-# Magic Release 🚀 [![author/maintainer](https://img.shields.io/badge/by-warengonzaga-016eea.svg?logo=github&labelColor=181717&longCache=true&style=flat-square)](https://warengonzaga.com/) [![nominate](https://img.shields.io/badge/nominate-%20@warengonzaga%20as%20GitHub%20Star-yellow.svg?logo=github&labelColor=181717&longCache=true&style=flat-square)](https://stars.github.com/nominate)
+# Magic Release 🪄 [![author/maintainer](https://img.shields.io/badge/by-warengonzaga-016eea.svg?logo=github&labelColor=181717&longCache=true&style=flat-square)](https://warengonzaga.com/) [![nominate](https://img.shields.io/badge/nominate-%20@warengonzaga%20as%20GitHub%20Star-yellow.svg?logo=github&labelColor=181717&longCache=true&style=flat-square)](https://stars.github.com/nominate)
 
-[![made with](https://img.shields.io/badge/made%20with-TypeScript-blue.svg?logo=typescript&labelColor=181717&color=blue&logoColor=white&style=flat-square)](https://www.typescriptlang.org/) [![release](https://img.shields.io/github/release/warengonzaga/magic-release.svg?logo=github&labelColor=181717&color=green&style=flat-square)](https://github.com/warengonzaga/magic-release/releases) [![star](https://img.shields.io/github/stars/warengonzaga/magic-release.svg?&logo=github&labelColor=181717&color=yellow&style=flat-square)](https://github.com/warengonzaga/magic-release/stargazers) [![license](https://img.shields.io/github/license/warengonzaga/magic-release.svg?&logo=github&labelColor=181717&style=flat-square)](https://github.com/warengonzaga/magic-release/blob/main/LICENSE) [![NPM Downloads](https://img.shields.io/npm/dt/magicr?logo=npm&labelColor=181717&color=red&style=flat-square)](https://npmjs.com/package/magicr)
+[![member of ossph](https://img.shields.io/badge/member-OSS%20PH-0060a0.svg?logo=github&longCache=true&labelColor=181717&style=flat-square)](https://github.com/ossphilippines) [![sponsors](https://img.shields.io/badge/sponsor-%E2%9D%A4-%23db61a2.svg?&logo=github&logoColor=white&labelColor=181717&style=flat-square)](https://github.com/sponsors/warengonzaga) [![release](https://img.shields.io/github/release/warengonzaga/magic-release.svg?logo=github&labelColor=181717&color=green&style=flat-square)](https://github.com/warengonzaga/magic-release/releases) [![star](https://img.shields.io/github/stars/warengonzaga/magic-release.svg?&logo=github&labelColor=181717&color=yellow&style=flat-square)](https://github.com/warengonzaga/magic-release/stargazers) [![license](https://img.shields.io/github/license/warengonzaga/magic-release.svg?&logo=github&labelColor=181717&style=flat-square)](https://github.com/warengonzaga/magic-release/blob/main/license) [![NPM Installs](https://img.shields.io/npm/dt/magicr?color=CB3837&logo=npm&label=installs&labelColor=181717&style=flat-square)](https://npmjs.com/package/magicr)
 
 <!-- ![banner](https://your-banner-url.com) -->
 
-> AI-powered changelog generator from your commit history, built for dev workflows. 🪄📝
+> AI-powered changelog generator from your commit history, built for dev workflows. 🪄📝💻
 
-Magic Release automatically generates beautiful, structured changelogs from your Git commit history using AI. Just type `magicr` and watch as it creates professional changelogs following Keep a Changelog format. It uses `gpt-4o-mini` as the default model from OpenAI to analyze and categorize your commits. 🚀
+Magic Release automatically generates beautiful, structured changelogs from your Git commit history using AI. Simply run `magicr` in your repository and watch as it creates professional changelogs following Keep a Changelog format. 🚀
+
+**Key Features:**
+
+- 🤖 **Multiple AI Providers** - OpenAI, Anthropic, Azure OpenAI support
+- 📋 **Keep a Changelog Format** - Industry-standard changelog structure
+- 🎯 **Smart Categorization** - Automatically sorts commits into features, fixes, breaking changes
+- ⚡ **Zero Configuration** - Works out of the box with sensible defaults
+- 🛠️ **Flexible Setup** - Interactive configuration and project initialization
+- 🔍 **Range Support** - Generate changelogs for specific commit ranges
+- 🚀 **No Installation Required** - Use with `npx` without global installation
 
 Have suggestions in mind? [Let me know!](https://github.com/warengonzaga/magic-release/issues)
 
@@ -19,59 +29,106 @@ Like this project? Leave a star! ⭐⭐⭐⭐⭐
 
 > Coming soon! 📹
 
-## 🕹️ Usage
-
-Navigate to your Git repository and run:
+### Quick Start
 
 ```bash
+# Option 1: Install globally
+npm install -g magicr
+cd your-project
 magicr
+
+# Option 2: Use with npx (no installation needed)
+cd your-project
+npx magicr
 ```
 
 This will automatically:
 
-- Analyze your commit history
-- Categorize commits using AI
-- Generate a beautiful `CHANGELOG.md` file
-- Follow Keep a Changelog format standards
+- 🔍 Analyze your Git commit history
+- 🤖 Categorize commits using AI (Features, Bug Fixes, Breaking Changes, etc.)
+- 📝 Generate a beautiful `CHANGELOG.md` file
+- 🎯 Follow Keep a Changelog format standards
+- 📋 Create proper version sections and release notes
 
 ### Common Commands
 
 ```bash
-# Generate changelog from specific commit range
-magicr --from v1.0.0 --to HEAD
+# Basic usage - generate changelog from all commits
+magicr
+# or with npx
+npx magicr
 
-# Dry run to preview without writing files
+# Generate changelog from specific commit range
+magicr --from v1.0.0 --to v2.0.0
+# or with npx
+npx magicr --from v1.0.0 --to v2.0.0
+
+# Preview without writing files
 magicr --dry-run
 
 # Include verbose output for debugging
 magicr --verbose
 
-# Set up OpenAI API key
-magicr --set-api-key
+# Set up API key (auto-detects OpenAI)
+magicr --set-key sk-your-openai-key
+# or with npx
+npx magicr --set-key sk-your-openai-key
 
-# Generate sample configuration
-magicr --generate-config
+# Interactive configuration setup
+magicr --config
+
+# Initialize project configuration
+magicr --init
+
+# Switch or list AI providers
+magicr --provider
 ```
 
 > [!NOTE]
-> To work properly, it requires an API key from [OpenAI](https://openai.com/) to use the GPT-4o-mini model. You can get your API key by signing up on their website. Once you have the API key, set it up by running:
+> Magic Release supports multiple AI providers including OpenAI, Anthropic, and Azure OpenAI. By default, it uses OpenAI's `gpt-4o-mini` model. You'll need an API key from your chosen provider:
+>
+> **OpenAI:** Get your API key at [platform.openai.com](https://platform.openai.com/api-keys)
+> **Anthropic:** Get your API key at [console.anthropic.com](https://console.anthropic.com/)
+> **Azure OpenAI:** Configure through your Azure portal
 >
 > ```bash
-> magicr --set-api-key
+> # Set up your API key (auto-detects provider)
+> magicr --set-key your-api-key
+> # or with npx
+> npx magicr --set-key your-api-key
+>
+> # Or specify provider explicitly
+> magicr --provider anthropic --set-key your-anthropic-key
+> # or with npx
+> npx magicr --provider anthropic --set-key your-anthropic-key
 > ```
 
 ## 📦 Installation
 
-You can install this project via `npm` or `yarn`.
+**Requirements:**
+
+- Node.js ≥ 20.0.0
+- Yarn ≥ 4.0.0 (recommended) or npm
+
+### Global Installation
 
 ```bash
+# Using npm
 npm install -g magicr
+
+# Using yarn
+yarn global add magicr
 ```
 
-or
+### Using npx (No Installation Required)
 
 ```bash
-yarn global add magicr
+# Run directly without installing
+npx magicr
+
+# You can use all the same options
+npx magicr --set-key your-api-key
+npx magicr --from v1.0.0 --to v2.0.0
 ```
 
 ## 💖 Motivation

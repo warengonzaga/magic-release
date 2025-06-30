@@ -1,5 +1,5 @@
 /**
- * Integration tests for MagicRelease core workflow
+ * Integration tests for Magic Release core workflow
  * Tests the complete functionality without CLI complexity
  */
 
@@ -18,7 +18,7 @@ jest.unmock('fs');
 // Test constants - using valid-looking API key formats
 const TEST_API_KEY = 'sk-proj-abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890';
 
-describe('MagicRelease Workflow Integration Tests', () => {
+describe('Magic Release Workflow Integration Tests', () => {
   let testDir: string;
 
   beforeEach(async () => {
@@ -34,7 +34,7 @@ describe('MagicRelease Workflow Integration Tests', () => {
       // Set up test repository in testDir
       await setupTestRepository(testDir);
       
-      // Verify git directory exists before creating MagicRelease
+      // Verify git directory exists before creating Magic Release
       const gitExists = await fs.access(path.join(testDir, '.git')).then(() => true).catch(() => false);
       console.log('Git directory exists:', gitExists, 'in', testDir);
       
