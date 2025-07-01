@@ -262,13 +262,15 @@ export class MagicRelease {
         return dateB.getTime() - dateA.getTime();
       });
 
-      const changes = sortedCategoryCommits.map(commit => ({
-        description: this.generateChangeDescription(commit),
-        commits: [commit],
-        ...(commit.scope && { scope: commit.scope }),
-        ...(commit.pr && { pr: commit.pr }),
-        ...(commit.issues && commit.issues.length > 0 && { issues: commit.issues }),
-      }));
+      const changes = await Promise.all(
+        sortedCategoryCommits.map(async commit => ({
+          description: await this.generateChangeDescription(commit),
+          commits: [commit],
+          ...(commit.scope && { scope: commit.scope }),
+          ...(commit.pr && { pr: commit.pr }),
+          ...(commit.issues && commit.issues.length > 0 && { issues: commit.issues }),
+        }))
+      );
 
       categorizedChanges.set(category, changes);
     }
@@ -299,10 +301,31 @@ export class MagicRelease {
 
   /**
    * Generate user-friendly change description from commit
-   * Converts commits to conventional commit format for better readability
+   * Uses LLM to rephrase commit messages into clear, present imperative tense
    */
-  private generateChangeDescription(commit: Commit): string {
-    // Clean up the commit message for user consumption
+  private async generateChangeDescription(commit: Commit): Promise<string> {
+    try {
+      // Use LLM service to rephrase the commit message
+      const response = await this.llmService.rephraseCommitMessage(commit.message);
+
+      if (response && response.trim().length > 0) {
+        // Clean up any extra formatting from LLM response
+        let cleaned = response.trim();
+        // Remove quotes if present
+        cleaned = cleaned.replace(/^["']|["']$/g, '');
+        // Remove leading dash if present
+        cleaned = cleaned.replace(/^-\s*/, '');
+        // Ensure it starts with capital letter
+        cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+        return cleaned;
+      }
+    } catch (error) {
+      logger.warn('Failed to rephrase commit message using LLM, falling back to manual cleanup', {
+        error,
+      });
+    }
+
+    // Fallback: Clean up the commit message manually
     let description = commit.message;
 
     // Remove conventional commit prefixes and emojis if present
@@ -330,137 +353,138 @@ export class MagicRelease {
 
     // If description is empty or too short, provide a default
     if (!description || description.length < 3) {
-      description = 'update code';
+      description = 'Update functionality';
     }
 
-    // Convert to conventional commit format based on the commit type/category
-    const conventionalType = this.getConventionalType(commit);
-    const scope = commit.scope;
+    // Convert to human-readable, present imperative tense
+    // Ensure it starts with a capital letter and action verb
+    description = this.convertToImperativeTense(description, commit);
 
-    // Build conventional commit message with lowercase description
-    let conventionalMessage = conventionalType;
-    if (scope) {
-      conventionalMessage += `(${scope})`;
+    return description;
+  }
+
+  /**
+   * Convert commit message to human-readable, present imperative tense
+   */
+  private convertToImperativeTense(description: string, commit: Commit): string {
+    // Determine the appropriate action verb based on commit type or content
+    const actionVerb = this.getActionVerb(description, commit);
+
+    // Clean up and format the description
+    let cleanDescription = description;
+
+    // Remove any existing action verbs if they're redundant
+    cleanDescription = cleanDescription.replace(
+      /^(add|fix|update|remove|change|improve|implement|create|delete|refactor|optimize|enhance|modify)\s+/i,
+      ''
+    );
+
+    // Handle specific patterns for better readability
+    cleanDescription = this.improveDescriptionReadability(cleanDescription);
+
+    // Combine action verb with cleaned description
+    const result = `${actionVerb} ${cleanDescription}`;
+
+    // Ensure proper capitalization
+    return result.charAt(0).toUpperCase() + result.slice(1);
+  }
+
+  /**
+   * Determine appropriate action verb based on commit content
+   */
+  private getActionVerb(description: string, commit: Commit): string {
+    const message = `${commit.message} ${description}`.toLowerCase();
+
+    // Check for specific patterns to determine the most appropriate verb
+    if (
+      message.includes('bug') ||
+      message.includes('error') ||
+      message.includes('issue') ||
+      message.includes('problem') ||
+      message.includes('broken') ||
+      commit.type === 'fix'
+    ) {
+      return 'Fix';
     }
-    
-    // Ensure description starts with lowercase (conventional commits standard)
-    const cleanDescription = description.charAt(0).toLowerCase() + description.slice(1);
-    conventionalMessage += `: ${cleanDescription}`;
 
-    // Remove any trailing periods from the final message
-    conventionalMessage = conventionalMessage.replace(/\.$/, '');
+    if (
+      message.includes('security') ||
+      message.includes('vulnerability') ||
+      message.includes('exploit')
+    ) {
+      return 'Fix';
+    }
 
-    return conventionalMessage;
+    if (
+      message.includes('performance') ||
+      message.includes('optimize') ||
+      message.includes('speed') ||
+      message.includes('faster') ||
+      message.includes('cache')
+    ) {
+      return 'Optimize';
+    }
+
+    if (message.includes('remove') || message.includes('delete') || message.includes('drop')) {
+      return 'Remove';
+    }
+
+    if (
+      message.includes('update') ||
+      message.includes('upgrade') ||
+      message.includes('modify') ||
+      message.includes('change') ||
+      commit.type === 'refactor'
+    ) {
+      return 'Update';
+    }
+
+    if (message.includes('improve') || message.includes('enhance') || message.includes('better')) {
+      return 'Improve';
+    }
+
+    if (
+      message.includes('add') ||
+      message.includes('new') ||
+      message.includes('create') ||
+      message.includes('implement') ||
+      commit.type === 'feat'
+    ) {
+      return 'Add';
+    }
+
+    // Default to 'Update' for generic changes
+    return 'Update';
+  }
+
+  /**
+   * Improve description readability with specific transformations
+   */
+  private improveDescriptionReadability(description: string): string {
+    let improved = description;
+
+    // Handle common patterns
+    improved = improved.replace(/^the\s+/i, '');
+    improved = improved.replace(/\s+system$/, ' system');
+    improved = improved.replace(/\s+functionality$/, ' functionality');
+    improved = improved.replace(/\s+feature$/, ' feature');
+
+    // Handle specific technical terms
+    improved = improved.replace(/auth\b/gi, 'authentication');
+    improved = improved.replace(/config\b/gi, 'configuration');
+    improved = improved.replace(/perf\b/gi, 'performance');
+    improved = improved.replace(/\bui\b/gi, 'UI');
+    improved = improved.replace(/\bapi\b/gi, 'API');
+
+    // Clean up extra spaces
+    improved = improved.replace(/\s+/g, ' ').trim();
+
+    return improved;
   }
 
   /**
    * Get conventional commit type based on the commit's category or content
    */
-  private getConventionalType(commit: Commit): string {
-    // If the commit already has a type from conventional parsing, use it
-    if (commit.type) {
-      return commit.type;
-    }
-
-    // Otherwise, analyze the commit message to determine the type
-    const message = commit.message.toLowerCase();
-    
-    // Feature-related keywords
-    if (
-      message.includes('feat') ||
-      message.includes('feature') ||
-      message.includes('add') ||
-      message.includes('new') ||
-      message.includes('initial commit')
-    ) {
-      return 'feat';
-    }
-
-    // Fix-related keywords
-    if (
-      message.includes('fix') ||
-      message.includes('bug') ||
-      message.includes('hotfix') ||
-      message.includes('patch') ||
-      message.includes('error') ||
-      message.includes('issue')
-    ) {
-      return 'fix';
-    }
-
-    // Documentation
-    if (
-      message.includes('doc') ||
-      message.includes('readme') ||
-      message.includes('comment') ||
-      message.includes('documentation')
-    ) {
-      return 'docs';
-    }
-
-    // Testing
-    if (message.includes('test') || message.includes('spec') || message.includes('coverage')) {
-      return 'test';
-    }
-
-    // Performance
-    if (
-      message.includes('perf') ||
-      message.includes('performance') ||
-      message.includes('optimize') ||
-      message.includes('speed')
-    ) {
-      return 'perf';
-    }
-
-    // Refactoring
-    if (
-      message.includes('refactor') ||
-      message.includes('restructure') ||
-      message.includes('reorganize')
-    ) {
-      return 'refactor';
-    }
-
-    // Style/formatting
-    if (
-      message.includes('style') ||
-      message.includes('format') ||
-      message.includes('lint') ||
-      message.includes('prettier')
-    ) {
-      return 'style';
-    }
-
-    // Build/CI
-    if (
-      message.includes('build') ||
-      message.includes('ci') ||
-      message.includes('deploy') ||
-      message.includes('config') ||
-      message.includes('setup')
-    ) {
-      return 'build';
-    }
-
-    // Chore (maintenance, dependencies, etc.)
-    if (
-      message.includes('chore') ||
-      message.includes('update') ||
-      message.includes('upgrade') ||
-      message.includes('bump') ||
-      message.includes('maintain') ||
-      message.includes('clean') ||
-      message.includes('remove') ||
-      message.includes('delete')
-    ) {
-      return 'chore';
-    }
-
-    // Default to 'chore' for unclassified commits
-    return 'chore';
-  }
-
   /**
    * Determine commit range for analysis
    */

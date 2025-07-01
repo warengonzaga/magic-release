@@ -118,16 +118,11 @@ describe('MagicRelease Core Integration Tests', () => {
             choices: [
               {
                 message: {
-                  content: `# Changelog
+                  content: `### Added
+- Add new feature with custom tag pattern
 
-All notable changes to this project will be documented in this file.
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-## [Unreleased]
-
-### Added
-- New feature with custom tag pattern`,
+### Fixed
+- Various bug fixes`,
                 },
               },
             ],
@@ -346,19 +341,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
             choices: [
               {
                 message: {
-                  content: `# Changelog
-
-All notable changes to this project will be documented in this file.
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-## [Unreleased]
-
-### BREAKING CHANGES
+                  content: `### BREAKING CHANGES
 - API endpoints have been restructured
 - Configuration format has changed
 
 ### Added
+- Add main file
 - New authentication system
 
 ### Changed
@@ -428,15 +416,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
             choices: [
               {
                 message: {
-                  content: `# Changelog
-
-All notable changes to this project will be documented in this file.
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-## [Unreleased]
-
-### Added
+                  content: `### Added
+- Add main file
 - Initial changelog generation`,
                 },
               },

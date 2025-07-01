@@ -290,6 +290,37 @@ export class LLMService {
   }
 
   /**
+   * Rephrase commit message into clear, present imperative tense
+   *
+   * Takes a raw commit message and converts it into a clear, professional
+   * description suitable for changelog entries, using present imperative tense.
+   *
+   * @param commitMessage - The commit message to rephrase
+   * @returns The rephrased commit description
+   */
+  async rephraseCommitMessage(commitMessage: string): Promise<string> {
+    const messages: LLMMessage[] = [
+      {
+        role: 'system',
+        content:
+          'You are a technical writer specializing in clear documentation. Rephrase commit messages into clear, present imperative tense descriptions suitable for changelog bullet points. Start with an action verb (Add, Fix, Update, Remove, etc.). Make it human-readable and professional. Return only the rephrased description.',
+      },
+      {
+        role: 'user',
+        content: `Rephrase this commit message into a clear, present imperative tense description: ${commitMessage}`,
+      },
+    ];
+
+    try {
+      const response = await this.provider.generateCompletion(messages);
+      return response.content.trim();
+    } catch (error) {
+      logger.warn(`Failed to rephrase commit message: ${commitMessage}`, error);
+      throw error; // Re-throw to allow fallback handling in caller
+    }
+  }
+
+  /**
    * Create LLM service from Magic Release configuration
    */
   static fromConfig(config: MagicReleaseConfig): LLMService {

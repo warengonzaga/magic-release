@@ -3,81 +3,61 @@
  * These tests validate provider instantiation and basic functionality
  */
 
-import { ProviderFactory } from '../../core/llm/providers/ProviderFactory.js';
+import ProviderFactory from '../../core/llm/ProviderFactory.js';
 import { OpenAIProvider } from '../../core/llm/providers/OpenAIProvider.js';
 import { AnthropicProvider } from '../../core/llm/providers/AnthropicProvider.js';
 import { AzureProvider } from '../../core/llm/providers/AzureProvider.js';
 import { PROVIDER_CONFIGS } from '../../core/llm/providers/ProviderInterface.js';
-import type { MagicReleaseConfig } from '../../types/index.js';
 
 describe('Provider Tests', () => {
   describe('Provider Instantiation', () => {
     it('should create OpenAI provider instance correctly', () => {
-      const config: MagicReleaseConfig = {
-        llm: {
-          provider: 'openai',
-          apiKey: 'sk-test1234567890abcdef1234567890abcdef1234567890abcdef', // 48+ chars
+      const provider = ProviderFactory.createProviderFromConfig(
+        'openai',
+        'sk-test1234567890abcdef1234567890abcdef1234567890abcdef',
+        {
           model: 'gpt-4o-mini',
           temperature: 0.1,
-        },
-        git: { tagPattern: 'v*', remote: 'origin' },
-        changelog: { filename: 'CHANGELOG.md', includeCommitLinks: false },
-      };
-
-      const provider = ProviderFactory.createProvider(config);
+        }
+      );
 
       expect(provider).toBeInstanceOf(OpenAIProvider);
       expect(provider.constructor.name).toBe('OpenAIProvider');
     });
 
     it('should create Anthropic provider instance correctly', () => {
-      const config: MagicReleaseConfig = {
-        llm: {
-          provider: 'anthropic',
-          apiKey: 'sk-ant-test1234567890abcdef1234567890abcdef1234567890abcdef',
+      const provider = ProviderFactory.createProviderFromConfig(
+        'anthropic',
+        'sk-ant-test1234567890abcdef1234567890abcdef1234567890abcdef',
+        {
           model: 'claude-3-haiku',
           temperature: 0.1,
-        },
-        git: { tagPattern: 'v*', remote: 'origin' },
-        changelog: { filename: 'CHANGELOG.md', includeCommitLinks: false },
-      };
-
-      const provider = ProviderFactory.createProvider(config);
+        }
+      );
 
       expect(provider).toBeInstanceOf(AnthropicProvider);
       expect(provider.constructor.name).toBe('AnthropicProvider');
     });
 
     it('should create Azure provider instance correctly', () => {
-      const config: MagicReleaseConfig = {
-        llm: {
-          provider: 'azure',
-          apiKey: 'abcd1234567890efgh1234567890ijkl',
+      const provider = ProviderFactory.createProviderFromConfig(
+        'azure',
+        'abcd1234567890efgh1234567890ijkl',
+        {
           model: 'gpt-4',
           temperature: 0.1,
           endpoint: 'https://test.openai.azure.com/',
-        },
-        git: { tagPattern: 'v*', remote: 'origin' },
-        changelog: { filename: 'CHANGELOG.md', includeCommitLinks: false },
-      };
-
-      const provider = ProviderFactory.createProvider(config);
+        }
+      );
 
       expect(provider).toBeInstanceOf(AzureProvider);
       expect(provider.constructor.name).toBe('AzureProvider');
     });
 
     it('should throw error for invalid provider type', () => {
-      const config = {
-        llm: {
-          provider: 'invalid-provider' as any,
-          apiKey: 'test-key',
-        },
-        git: { tagPattern: 'v*', remote: 'origin' },
-        changelog: { filename: 'CHANGELOG.md', includeCommitLinks: false },
-      };
-
-      expect(() => ProviderFactory.createProvider(config)).toThrow();
+      expect(() =>
+        ProviderFactory.createProviderFromConfig('invalid-provider' as any, 'test-key')
+      ).toThrow();
     });
   });
 

@@ -21,6 +21,9 @@
 // Export types
 export type * from './types/index.js';
 
+// Export core classes
+export { MagicRelease } from './core/MagicRelease.js';
+
 // Export utilities
 export * from './utils/config-store.js';
 export * from './utils/errors.js';

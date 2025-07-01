@@ -52,7 +52,7 @@ export class ProviderFactory {
   static createProviderFromConfig(
     providerType: ProviderType,
     apiKey: string,
-    options: Partial<LLMConfig> = {}
+    options: Partial<LLMConfig> & Partial<OpenAIConfig> & Partial<AzureConfig> = {}
   ): BaseProvider {
     const baseConfig: LLMConfig = {
       apiKey,

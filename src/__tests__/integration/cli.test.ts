@@ -225,7 +225,8 @@ describe('CLI Integration Tests', () => {
 
       expect(result.exitCode).toBe(0);
       // Check for actual changelog content in the output instead of specific mock text
-      expect(result.stdout).toContain('## [Unreleased]');
+      expect(result.stdout).toContain('Generated changelog preview:');
+      expect(result.stdout).toContain('# Changelog');
     });
   });
 

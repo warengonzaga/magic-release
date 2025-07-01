@@ -25,47 +25,88 @@ export class ChangelogPrompt {
 
   /**
    * Generate system prompt for changelog generation
+   *
+   * Creates a comprehensive system prompt that instructs the LLM to act as an expert
+   * commit message rewriter following the "Keep a Changelog" format. The prompt includes:
+   *
+   * - Clear AI instruction format with purpose and steps
+   * - Guidelines for rephrasing commit messages into present imperative tense
+   * - Instructions to eliminate emojis and formatting tags
+   * - Examples of proper transformations
+   * - Keep a Changelog categorization rules
+   * - Output formatting requirements
+   *
+   * This enhanced prompt incorporates the AI Instruction: Commit Message Rewriter
+   * methodology to ensure consistent, human-readable changelog entries.
+   *
+   * @returns System prompt string for LLM changelog generation
    */
   getSystemPrompt(): string {
-    return `You are an expert changelog generator that follows the "Keep a Changelog" format (https://keepachangelog.com/).
+    return `You are an expert commit message rewriter for changelogs that follows the "Keep a Changelog" format (https://keepachangelog.com/).
 
-Your task is to:
-1. Analyze git commit messages and categorize changes into: Added, Changed, Deprecated, Removed, Fixed, Security
-2. Generate clean, user-friendly descriptions that focus on the impact for end users
-3. Group related changes together when appropriate
-4. Use clear, concise language that non-technical users can understand
-5. Focus on benefits and impacts, not implementation details
+### 🧠 AI Instruction: Commit Message Rewriter for Changelogs
+
+**Purpose**:  
+Rephrase developer commit messages into human-readable changelog entries that conform to the Keep a Changelog format while preserving the original intent.
+
+**Input**:  
+Raw commit messages (format-agnostic), optionally including emojis or tags.
+
+**Output Format**:
+\`\`\`markdown
+### [Section]  
+- [Commit summary in present imperative tense] ([commit hash])
+\`\`\`
+
+**Steps**:
+
+1. **Determine Changelog Section** (\`Added\`, \`Changed\`, \`Fixed\`, \`Removed\`, etc.)  
+   - Use semantic cues from the commit message to classify the entry.
+
+2. **Rephrase Message**  
+   - Use **present imperative tense** (e.g. "Update", "Fix", "Remove").  
+   - Capitalize the first word.  
+   - Eliminate emojis and tags (e.g. \`✨\`, \`fix:\`).  
+   - Make it concise and clear to both technical and non-technical audiences.
+
+3. **Format Entry**  
+   - Convert into a bullet point with the rephrased message.  
+   - Append the **commit hash** in parentheses (if available).
+
+**Example**:
+\`\`\`
+Input: ✨ tweak: replace the color in chat input  
+Output: - Replace color in chat input (abc1234)
+\`\`\`
+
+Additional Rephrasing Examples:
+- "🐛 fixed the dropdown issue" → "Fix dropdown functionality issue"
+- "feat: adds new user management feature" → "Add user management feature"
+- "refactored the payment module" → "Refactor payment module structure"
+- "chore: update dependencies" → "Update project dependencies"
 
 Format Guidelines:
 - Follow Keep a Changelog format exactly
-- Use markdown formatting
-- Start each category with ### [Category]
+- Use markdown formatting with ### for categories
 - Use bullet points (- ) for individual changes
-- Include relevant issue/PR references when available
-- Avoid technical jargon when possible
-- Focus on user-facing changes and their benefits
+- Include commit hash in parentheses: (abc1234)
+- Only include categories that have changes
+- Group similar changes when appropriate
 
 Categories (only include if there are changes):
-- **Added** for new features
-- **Changed** for changes in existing functionality  
+- **Added** for new features and capabilities
+- **Changed** for changes in existing functionality
 - **Deprecated** for soon-to-be removed features
 - **Removed** for now removed features
-- **Fixed** for any bug fixes
-- **Security** in case of vulnerabilities
-
-Guidelines for descriptions:
-- Start with action verbs (Add, Fix, Update, Remove, etc.)
-- Be specific about what changed and why it matters to users
-- Group related commits into single, coherent entries
-- Prioritize user-facing changes over internal refactoring
-- Use consistent tone and style
+- **Fixed** for any bug fixes and corrections
+- **Security** for vulnerability fixes and security improvements
 
 Do not include:
 - Empty categories
-- Internal refactoring unless it impacts users
-- Minor code style changes
-- Dependency updates unless they add features or fix issues
-- Build system changes unless they affect end users`;
+- Minor whitespace or formatting changes
+- Trivial dependency updates
+- Internal refactoring that doesn't affect users
+- Build system changes that don't impact end users`;
   }
 
   /**
@@ -92,7 +133,7 @@ Do not include:
     }
 
     // Add commits
-    prompt += `Commits to analyze:\n`;
+    prompt += `Commits to analyze and rephrase:\n`;
     for (const commit of context.commits) {
       prompt += `- ${commit.message}`;
 
@@ -120,6 +161,23 @@ Do not include:
         prompt += `  Body: ${body}${commit.body.length > 200 ? '...' : ''}\n`;
       }
     }
+
+    prompt += `\nPlease:
+1. Rephrase each commit message into clear, present imperative tense
+2. Categorize each rephrased entry into the appropriate Keep a Changelog category
+3. Format as bullet points under each category header
+4. Include the commit hash with each entry
+5. Focus on what the change accomplishes for users
+
+Expected output format:
+### Added
+- Rephrased commit description (abc1234)
+- Another rephrased description (def5678)
+
+### Fixed
+- Rephrased bug fix description (ghi9012)
+
+Only include categories that have actual changes.\n\n`;
 
     // Add style reference if previous changelog exists
     if (context.previousChangelog) {
