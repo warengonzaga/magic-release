@@ -230,10 +230,12 @@ export class MagicRelease {
       return entries;
     }
 
-    // Group commits by potential versions or create an "Unreleased" entry
-    const unreleasedEntry: ChangelogEntry = {
-      version: 'Unreleased',
-      date: new Date(),
+    // Determine the appropriate version for these commits
+    const targetVersion = this.determineTargetVersion(analysis);
+
+    const changelogEntry: ChangelogEntry = {
+      version: targetVersion.version,
+      ...(targetVersion.date && { date: targetVersion.date }),
       sections: new Map(),
     };
 
@@ -289,12 +291,12 @@ export class MagicRelease {
         const changes = categorizedChanges.get(category);
         if (changes) {
           // Changes are already in newest-first order from sorting
-          unreleasedEntry.sections.set(category, changes);
+          changelogEntry.sections.set(category, changes);
         }
       }
     }
 
-    entries.push(unreleasedEntry);
+    entries.push(changelogEntry);
     return entries;
   }
 
@@ -613,6 +615,66 @@ export class MagicRelease {
     }
 
     return results;
+  }
+
+  /**
+   * Determine the target version for commits based on repository analysis
+   *
+   * This method analyzes the relationship between commits, tags, and HEAD to determine
+   * whether commits should be marked as "Unreleased" or associated with a specific version.
+   *
+   * Logic:
+   * - If there's a tag at HEAD that contains all the commits, use that tag's version
+   * - If commits are after the latest tag, mark as "Unreleased"
+   * - If no tags exist, mark as "Unreleased"
+   *
+   * TODO: Add CLI flags to control date behavior for changelog generation
+   * Features to implement:
+   * - `--use-commit-date`: Use the commit date instead of tag creation date
+   * - `--use-tag-date`: Use the tag creation date (current default behavior)
+   * - `--date-source=<commit|tag|custom>`: Allow users to specify date source
+   * - `--custom-date=<YYYY-MM-DD>`: Allow manual date override
+   * This will provide more flexibility for different release workflows and allow
+   * users to choose between tag creation date vs actual commit development date.
+   */
+  private determineTargetVersion(analysis: RepositoryAnalysis): { version: string; date?: Date } {
+    const { tags } = analysis;
+
+    if (tags.length === 0) {
+      logger.debug('No tags found, marking commits as Unreleased');
+      return { version: 'Unreleased', date: new Date() };
+    }
+
+    // Get the latest tag
+    const latestTag = this.tagManager.getLatestTag(tags);
+
+    if (!latestTag) {
+      logger.debug('No valid latest tag found, marking commits as Unreleased');
+      return { version: 'Unreleased', date: new Date() };
+    }
+
+    // Check if the latest tag is at HEAD
+    try {
+      const headCommit = this.gitService.getCommitHash('HEAD');
+      const tagCommit = latestTag.hash;
+
+      if (headCommit === tagCommit) {
+        // Tag is at HEAD, these commits should be part of this release
+        // Currently using tag creation date - see TODO above for future enhancements
+        logger.debug(`Latest tag ${latestTag.name} is at HEAD, using tag version`);
+        return {
+          version: latestTag.version,
+          date: latestTag.date || new Date(),
+        };
+      } else {
+        // Tag is behind HEAD, commits are unreleased
+        logger.debug(`Latest tag ${latestTag.name} is behind HEAD, marking commits as Unreleased`);
+        return { version: 'Unreleased', date: new Date() };
+      }
+    } catch (error) {
+      logger.warn('Could not compare tag and HEAD commits, defaulting to Unreleased', error);
+      return { version: 'Unreleased', date: new Date() };
+    }
   }
 }
 
