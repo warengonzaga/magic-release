@@ -36,13 +36,6 @@ describe('Magic Release Workflow Integration Tests', () => {
       // Set up test repository in testDir
       await setupTestRepository(testDir);
 
-      // Verify git directory exists before creating Magic Release
-      const gitExists = await fs
-        .access(path.join(testDir, '.git'))
-        .then(() => true)
-        .catch(() => false);
-      console.log('Git directory exists:', gitExists, 'in', testDir);
-
       const config: MagicReleaseConfig = {
         llm: {
           provider: 'openai',

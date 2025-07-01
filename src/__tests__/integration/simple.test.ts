@@ -44,29 +44,8 @@ describe('Magic Release Integration Tests', () => {
 
   describe('Basic changelog generation', () => {
     it('should generate changelog from commit history', async () => {
-      // Debug: check current working directory
-      console.log('Current working directory:', process.cwd());
-
-      // Debug: Check if git repository exists before setup
-      const gitExistsBefore = await fs
-        .access('.git')
-        .then(() => true)
-        .catch(() => false);
-      console.log('Git repository exists before setup:', gitExistsBefore);
-
       // Set up test repository with tags
       await setupRepositoryWithTags();
-
-      // Debug: Check if git repository exists after setup
-      const gitExistsAfter = await fs
-        .access('.git')
-        .then(() => true)
-        .catch(() => false);
-      console.log('Git repository exists after setup:', gitExistsAfter);
-
-      if (!gitExistsAfter) {
-        throw new Error('Git repository was not created properly');
-      }
 
       const config: MagicReleaseConfig = {
         llm: {

@@ -63,7 +63,7 @@ export default {
   setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup.ts'],
   
   // Timeout for tests
-  testTimeout: 30000,
+  testTimeout: 15000,
   
   // Mock configuration
   clearMocks: true,
