@@ -160,6 +160,7 @@ export class MagicRelease {
         repository,
         tags: [],
         commits: [],
+        categorizedCommits: new Map(),
         newVersions: [],
         existingVersions: new Set<string>(),
       };
@@ -189,6 +190,7 @@ export class MagicRelease {
       repository,
       tags,
       commits,
+      categorizedCommits,
       newVersions: [], // Will be populated by changelog generation
       existingVersions,
     };
@@ -235,10 +237,8 @@ export class MagicRelease {
       sections: new Map(),
     };
 
-    // Re-categorize commits using commit parser to get proper categorization
-    const { from, to } = this.determineCommitRange({}, analysis.tags);
-    const gitCommits = this.gitService.getCommitsBetween(from, to);
-    const categorizedCommits = this.commitParser.parseCommits(gitCommits);
+    // Use the categorized commits from the analysis instead of re-fetching
+    const categorizedCommits = analysis.categorizedCommits;
 
     // Convert categorized commits to changelog entries
     const categorizedChanges = new Map<

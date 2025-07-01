@@ -211,6 +211,7 @@ export interface RepositoryAnalysis {
   repository: RepositoryInfo;
   tags: Tag[];
   commits: Commit[];
+  categorizedCommits: Map<ChangeType, Commit[]>;
   newVersions: ChangelogEntry[];
   existingVersions: Set<string>;
 }

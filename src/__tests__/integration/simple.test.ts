@@ -455,11 +455,16 @@ async function setupRepositoryWithTags(): Promise<void> {
   await execCommand('git', ['add', 'src/performance.js']);
   await execCommand('git', ['commit', '-m', 'perf: optimize performance issues']);
 
-  // Tag as v1.1.0 - this includes all the commits above
-  await execCommand('git', ['tag', 'v1.1.0']);
-
-  // Add more commits for future versions (after v1.1.0)
+  // Add the new feature commit BEFORE tagging v1.1.0
   await fs.writeFile('src/feature.js', 'export const feature = { newFeature: () => {} };');
   await execCommand('git', ['add', 'src/feature.js']);
   await execCommand('git', ['commit', '-m', 'feat: add new feature']);
+
+  // Tag as v1.1.0 - this includes all the commits above including the new feature
+  await execCommand('git', ['tag', 'v1.1.0']);
+
+  // Add more commits for future versions (after v1.1.0)
+  await fs.writeFile('src/future.js', 'export const future = { futureFeature: () => {} };');
+  await execCommand('git', ['add', 'src/future.js']);
+  await execCommand('git', ['commit', '-m', 'feat: add future feature']);
 }
