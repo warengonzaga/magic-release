@@ -250,22 +250,6 @@ class Logger {
   }
 
   /**
-   * Set log level dynamically
-   */
-  setLevel(level: 'debug' | 'info' | 'warn' | 'error' | 'silent' | 'off'): void {
-    const modeMap = {
-      debug: LogMode.DEBUG,
-      info: LogMode.INFO,
-      warn: LogMode.WARN,
-      error: LogMode.ERROR,
-      silent: LogMode.SILENT,
-      off: LogMode.OFF,
-    };
-
-    LogEngine.configure({ mode: modeMap[level] });
-  }
-
-  /**
    * Enable or disable redaction dynamically
    */
   configureRedaction(enabled: boolean, customFields?: string[]): void {
@@ -277,46 +261,6 @@ class Logger {
     if (customFields) {
       LogEngine.addSensitiveFields(customFields);
     }
-  }
-
-  /**
-   * Create child logger with prefix
-   */
-  child(prefix: string): Logger {
-    const childLogger = new Logger();
-
-    // Override methods to include prefix
-    const originalMethods = ['debug', 'info', 'warn', 'error', 'log'] as const;
-
-    originalMethods.forEach(method => {
-      const originalMethod = childLogger[method].bind(childLogger);
-      childLogger[method] = (message: string, data?: unknown): void => {
-        originalMethod(`[${prefix}] ${message}`, data);
-      };
-    });
-
-    return childLogger;
-  }
-
-  /**
-   * Create scoped logger for specific modules
-   */
-  scope(module: string): Logger {
-    return this.child(module.toUpperCase());
-  }
-
-  /**
-   * Enable UI mode - suppresses debug/info logs, allows errors/warnings through
-   */
-  enableUIMode(): void {
-    uiStateManager.enableUIMode();
-  }
-
-  /**
-   * Enable UI mode with optional lock to prevent accidental toggling
-   */
-  enableUIModeWithLock(): void {
-    uiStateManager.enableUIMode(true);
   }
 
   /**

@@ -8,7 +8,6 @@ import { logger } from '../../utils/logger.js';
 
 export interface ParseOptions {
   preserveUnreleased?: boolean;
-  validateFormat?: boolean;
 }
 
 export class ChangelogParser {
@@ -118,91 +117,6 @@ export class ChangelogParser {
   }
 
   /**
-   * Check if changelog follows Keep a Changelog format
-   */
-  validateFormat(content: string): { valid: boolean; issues: string[] } {
-    const issues: string[] = [];
-
-    // Check for required header
-    if (!content.includes('# Changelog')) {
-      issues.push('Missing "# Changelog" header');
-    }
-
-    // Check for Keep a Changelog reference
-    if (!content.includes('keepachangelog.com')) {
-      issues.push('Missing Keep a Changelog reference');
-    }
-
-    // Check for semantic versioning reference
-    if (!content.includes('semver.org')) {
-      issues.push('Missing Semantic Versioning reference');
-    }
-
-    // Check version format
-    const versionRegex = /##\s*\[([^\]]+)\]/g;
-    let match;
-    while ((match = versionRegex.exec(content)) !== null) {
-      const version = match[1];
-      if (version && version !== 'Unreleased' && !this.isValidVersion(version)) {
-        issues.push(`Invalid version format: ${version}`);
-      }
-    }
-
-    // Check section order
-    const sectionOrder = ['Added', 'Changed', 'Deprecated', 'Removed', 'Fixed', 'Security'];
-    const sections =
-      content.match(/###\s+(Added|Changed|Deprecated|Removed|Fixed|Security)/g) ?? [];
-
-    let lastIndex = -1;
-    for (const sectionMatch of sections) {
-      const section = sectionMatch.replace('### ', '');
-      const currentIndex = sectionOrder.indexOf(section);
-
-      if (currentIndex !== -1 && currentIndex < lastIndex) {
-        issues.push(`Section "${section}" is out of order`);
-      }
-
-      if (currentIndex !== -1) {
-        lastIndex = currentIndex;
-      }
-    }
-
-    return {
-      valid: issues.length === 0,
-      issues,
-    };
-  }
-
-  /**
-   * Get the latest version from changelog
-   */
-  getLatestVersion(content: string): string | null {
-    const versionRegex = /##\s*\[([^\]]+)\]/;
-    const match = content.match(versionRegex);
-
-    if (match?.[1] && match[1] !== 'Unreleased') {
-      return match[1];
-    }
-
-    return null;
-  }
-
-  /**
-   * Check if changelog has unreleased section
-   */
-  hasUnreleasedSection(content: string): boolean {
-    return /##\s*\[Unreleased\]/i.test(content);
-  }
-
-  /**
-   * Extract unreleased changes
-   */
-  getUnreleasedChanges(content: string): ChangelogEntry | null {
-    const entries = this.parse(content);
-    return entries.find(entry => entry.version === 'Unreleased') ?? null;
-  }
-
-  /**
    * Parse change description and extract metadata
    */
   private parseChangeDescription(description: string): Change {
@@ -271,50 +185,6 @@ export class ChangelogParser {
     // Try to parse as general date
     const date = new Date(dateStr);
     return isNaN(date.getTime()) ? undefined : date;
-  }
-
-  /**
-   * Validate version format (basic semantic versioning)
-   */
-  private isValidVersion(version: string): boolean {
-    return /^\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?(?:\+[a-zA-Z0-9.-]+)?$/.test(version);
-  }
-
-  /**
-   * Merge multiple changelog entries
-   */
-  static mergeEntries(entries: ChangelogEntry[]): ChangelogEntry[] {
-    const versionMap = new Map<string, ChangelogEntry>();
-
-    for (const entry of entries) {
-      const existing = versionMap.get(entry.version);
-
-      if (existing) {
-        // Merge sections
-        for (const [sectionType, changes] of entry.sections) {
-          const existingChanges = existing.sections.get(sectionType) ?? [];
-          existing.sections.set(sectionType, [...existingChanges, ...changes]);
-        }
-
-        // Use the newer date if available
-        if (entry.date && (!existing.date || entry.date > existing.date)) {
-          existing.date = entry.date;
-        }
-      } else {
-        versionMap.set(entry.version, entry);
-      }
-    }
-
-    return Array.from(versionMap.values());
-  }
-
-  /**
-   * Convert entries back to changelog content
-   */
-  static entriesToContent(_entries: ChangelogEntry[]): string {
-    // This would use KeepChangelogGenerator - avoiding circular dependency
-    // Implementation would be similar to KeepChangelogGenerator.generate()
-    throw new Error('Use KeepChangelogGenerator.generate() instead');
   }
 }
 

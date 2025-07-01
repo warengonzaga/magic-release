@@ -8,7 +8,7 @@ node_modules/
 
 # Development files
 src/
-tests/
+src/__tests__/
 *.test.ts
 *.spec.ts
 

@@ -23,7 +23,6 @@ import { existsSync, readFileSync } from 'fs';
 import type {
   MagicReleaseConfig,
   RepositoryAnalysis,
-  CLIFlags,
   Commit,
   ChangelogEntry,
   ChangeType,
@@ -614,26 +613,6 @@ export class MagicRelease {
     }
 
     return results;
-  }
-
-  /**
-   * Create Magic Release instance from CLI flags
-   *
-   * Factory method that creates a configured MagicRelease instance based on
-   * command-line flags, setting appropriate logging levels and options.
-   *
-   * @param flags - CLI flags containing user preferences
-   * @param config - Base configuration object
-   * @returns Configured MagicRelease instance
-   */
-  static async fromCLIFlags(flags: CLIFlags, config: MagicReleaseConfig): Promise<MagicRelease> {
-    const instance = new MagicRelease(config);
-
-    if (flags.verbose) {
-      logger.setLevel('debug');
-    }
-
-    return instance;
   }
 }
 
