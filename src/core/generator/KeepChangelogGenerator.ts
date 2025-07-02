@@ -84,7 +84,6 @@ export class KeepChangelogGenerator {
     const unreleasedEntry = finalEntries.find(entry => entry.version === 'Unreleased');
     if (unreleasedEntry && this.hasChanges(unreleasedEntry)) {
       content += this.formatEntry(unreleasedEntry);
-      content += '\n';
     }
 
     // Add released versions (sorted by version, newest first)
@@ -94,7 +93,6 @@ export class KeepChangelogGenerator {
 
     for (const entry of releasedEntries) {
       content += this.formatEntry(entry);
-      content += '\n';
     }
 
     // Add compare links at the bottom
@@ -102,7 +100,8 @@ export class KeepChangelogGenerator {
       content += this.generateCompareLinks(releasedEntries);
     }
 
-    return content.trim();
+    // Ensure content ends with exactly one newline (trim first to remove any extra whitespace, then add single newline)
+    return `${content.trim()}\n`;
   }
 
   /**
@@ -467,14 +466,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
     const changelogPath = path.join(workingDir, filename);
 
     try {
-      // Create backup if file exists
-      if (existsSync(changelogPath)) {
-        const backupPath = `${changelogPath}.backup`;
-        const existingContent = readFileSync(changelogPath, 'utf8');
-        writeFileSync(backupPath, existingContent, 'utf8');
-        logger.debug(`Created backup: ${backupPath}`);
-      }
-
       writeFileSync(changelogPath, content, 'utf8');
       logger.info(`Changelog written to: ${changelogPath}`);
     } catch (error) {
