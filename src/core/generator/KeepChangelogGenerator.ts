@@ -723,7 +723,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   ): Promise<string> {
     logger.info('Appending to magicr changelog with precision modifications');
 
-    const parser = new (await import('./ChangelogParser.js')).default();
     let result = existingContent;
 
     for (const entry of entries) {
