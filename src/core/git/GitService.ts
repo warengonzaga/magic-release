@@ -296,6 +296,23 @@ export class GitService {
       return false;
     }
   }
+
+  /**
+   * Get commit hash for a given reference
+   *
+   * @param ref - Git reference (e.g., 'HEAD', tag name, branch name)
+   * @returns The commit hash
+   * @throws {GitError} If the reference doesn't exist or command fails
+   */
+  public getCommitHash(ref: string = 'HEAD'): string {
+    try {
+      const result = this.execGit(`rev-parse ${ref}`);
+      return result.trim();
+    } catch (error) {
+      logger.error(`Failed to get commit hash for ref: ${ref}`, error);
+      throw createGitError(`Failed to get commit hash for ref: ${ref}`);
+    }
+  }
 }
 
 export default GitService;

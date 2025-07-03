@@ -1,6 +1,6 @@
 {
   "name": "magicr",
-  "version": "0.1.0-beta",
+  "version": "0.1.1-beta",
   "description": "AI-powered changelog generator from your commit history, built for dev workflows.",
   "keywords": [
     "changelog",
