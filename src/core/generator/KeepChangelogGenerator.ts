@@ -203,14 +203,14 @@ export class KeepChangelogGenerator {
       }
     }
 
-    // Scenario 4: Preserve existing versioned entries (not Unreleased) - but skip duplicates
+    // Scenario 4: Preserve existing entries - but skip duplicates
     for (const existingEntry of existingEntries) {
       const isDuplicate = finalEntries.some(entry => entry.version === existingEntry.version);
       logger.debug(
         `Considering existing entry ${existingEntry.version}, duplicate: ${isDuplicate}`
       );
 
-      if (existingEntry.version !== 'Unreleased' && !isDuplicate) {
+      if (!isDuplicate) {
         // Only preserve if it has content
         if (this.hasChanges(existingEntry)) {
           logger.debug(`Preserving existing entry: ${existingEntry.version}`);
@@ -219,11 +219,7 @@ export class KeepChangelogGenerator {
           logger.debug(`Skipping empty existing entry: ${existingEntry.version}`);
         }
       } else {
-        logger.debug(
-          `Skipping existing entry: ${existingEntry.version} (Unreleased: ${
-            existingEntry.version === 'Unreleased'
-          }, duplicate: ${isDuplicate})`
-        );
+        logger.debug(`Skipping duplicate existing entry: ${existingEntry.version}`);
       }
     }
 
