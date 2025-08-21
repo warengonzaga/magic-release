@@ -1931,10 +1931,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@wgtechlabs/log-engine@npm:^2.1.1":
-  version: 2.1.1
-  resolution: "@wgtechlabs/log-engine@npm:2.1.1"
-  checksum: 2baa5451d75dd57098f1381524ee725c4d27a66a49d2916a63ca37cb564ba64844b9f5ad8442d4eaedb422b576e3e1e4508039671ee4ce74c86972508df82936
+"@wgtechlabs/log-engine@npm:^2.2.0":
+  version: 2.2.0
+  resolution: "@wgtechlabs/log-engine@npm:2.2.0"
+  checksum: 8/bc2a3923ca41edb7dbee996b1d58f9d92fb55ec941332cbe5b2545b47365cee98620e4e7efbcd97683f948ef39fff658ea1faaf1a325eec3d6f93c3963595a5d
   languageName: node
   linkType: hard
 
@@ -5840,7 +5840,7 @@ __metadata:
     "@types/react": ^18.3.12
     "@typescript-eslint/eslint-plugin": ^8.13.0
     "@typescript-eslint/parser": ^8.13.0
-    "@wgtechlabs/log-engine": ^2.1.1
+    "@wgtechlabs/log-engine": ^2.2.0
     chalk: ^5.3.0
     conf: ^13.0.1
     date-fns: ^4.1.0
