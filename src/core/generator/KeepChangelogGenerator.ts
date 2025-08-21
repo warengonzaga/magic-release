@@ -24,6 +24,7 @@ export interface GeneratorOptions {
   includePRLinks?: boolean;
   includeCommitLinks?: boolean;
   includeIssueLinks?: boolean;
+  appendOnly?: boolean; // New option for append-only mode
 }
 
 export class KeepChangelogGenerator {
@@ -68,37 +69,30 @@ export class KeepChangelogGenerator {
     });
 
     const existingChangelog = await this.loadExistingChangelog(workingDir);
-    const documentedVersions = this.extractDocumentedVersions(existingChangelog);
 
-    // Filter out already documented versions
-    const newEntries = entries.filter(entry => !documentedVersions.has(entry.version));
-
-    if (newEntries.length === 0) {
-      logger.info('No new versions to document');
-      return existingChangelog ?? this.generateHeader();
-    }
-
-    // Merge with existing changelog
-    const mergedEntries = this.mergeEntries(existingChangelog, newEntries);
+    // Handle the changelog generation with proper merging logic
+    const finalEntries = await this.processEntriesWithExistingChangelog(
+      entries,
+      existingChangelog,
+      workingDir
+    );
 
     // Generate full changelog content
     let content = this.generateHeader();
 
     // Add unreleased section if needed
-    const unreleasedEntry = mergedEntries.find(entry => entry.version === 'Unreleased');
+    const unreleasedEntry = finalEntries.find(entry => entry.version === 'Unreleased');
     if (unreleasedEntry && this.hasChanges(unreleasedEntry)) {
       content += this.formatEntry(unreleasedEntry);
-      content += '\n';
     }
 
     // Add released versions (sorted by version, newest first)
-    const releasedEntries = mergedEntries
+    const releasedEntries = finalEntries
       .filter(entry => entry.version !== 'Unreleased')
       .sort((a, b) => this.compareVersions(b.version, a.version));
 
     for (const entry of releasedEntries) {
       content += this.formatEntry(entry);
-      content += '\n';
     }
 
     // Add compare links at the bottom
@@ -106,7 +100,8 @@ export class KeepChangelogGenerator {
       content += this.generateCompareLinks(releasedEntries);
     }
 
-    return content.trim();
+    // Ensure content ends with exactly one newline (trim first to remove any extra whitespace, then add single newline)
+    return `${content.trim()}\n`;
   }
 
   /**
@@ -137,8 +132,110 @@ export class KeepChangelogGenerator {
   }
 
   /**
-   * Extract already documented versions from existing changelog
+   * Process entries with existing changelog using intelligent merging
    */
+  private async processEntriesWithExistingChangelog(
+    newEntries: ChangelogEntry[],
+    existingChangelog: string | undefined,
+    _workingDir: string
+  ): Promise<ChangelogEntry[]> {
+    // If no existing changelog, return new entries as-is
+    if (!existingChangelog) {
+      logger.info('No existing changelog found, creating from scratch');
+      return newEntries;
+    }
+
+    // Parse existing changelog to get structured entries
+    const parser = new (await import('./ChangelogParser.js')).default();
+    const existingEntries = parser.parse(existingChangelog);
+    const documentedVersions = this.extractDocumentedVersions(existingChangelog);
+
+    logger.debug('Found existing changelog', {
+      existingVersions: Array.from(documentedVersions),
+      newEntries: newEntries.map(e => e.version),
+    });
+
+    // Handle different scenarios
+    const hasUnreleasedInExisting = documentedVersions.has('Unreleased');
+    const hasUnreleasedInNew = newEntries.some(entry => entry.version === 'Unreleased');
+    const hasVersionedInNew = newEntries.some(entry => entry.version !== 'Unreleased');
+
+    const finalEntries: ChangelogEntry[] = [];
+
+    // Scenario 1: Converting Unreleased to a versioned release
+    if (hasUnreleasedInExisting && hasVersionedInNew) {
+      logger.info('Converting existing [Unreleased] section to versioned release');
+
+      // Find the versioned entry from new entries
+      const versionedEntry = newEntries.find(entry => entry.version !== 'Unreleased');
+      if (versionedEntry) {
+        // Convert existing unreleased to the new version
+        const existingUnreleased = existingEntries.find(entry => entry.version === 'Unreleased');
+        if (existingUnreleased && this.hasChanges(existingUnreleased)) {
+          const convertedEntry: ChangelogEntry = {
+            version: versionedEntry.version,
+            date: versionedEntry.date ?? new Date(),
+            sections: existingUnreleased.sections,
+          };
+          finalEntries.push(convertedEntry);
+        }
+      }
+    }
+
+    // Scenario 2: Add new Unreleased section if there are new unreleased commits
+    if (hasUnreleasedInNew) {
+      const newUnreleasedEntry = newEntries.find(entry => entry.version === 'Unreleased');
+      if (newUnreleasedEntry && this.hasChanges(newUnreleasedEntry)) {
+        // If we converted the old unreleased, this becomes the new unreleased section
+        finalEntries.push(newUnreleasedEntry);
+      }
+    }
+
+    // Scenario 3: Add any other NEW versioned entries that don't exist yet and weren't used for conversion
+    for (const newEntry of newEntries) {
+      if (
+        newEntry.version !== 'Unreleased' &&
+        !documentedVersions.has(newEntry.version) &&
+        !finalEntries.some(entry => entry.version === newEntry.version) && // Avoid duplicates from conversion
+        this.hasChanges(newEntry) // Only add if there are actual changes
+      ) {
+        finalEntries.push(newEntry);
+      }
+    }
+
+    // Scenario 4: Preserve existing entries - but skip duplicates
+    for (const existingEntry of existingEntries) {
+      const isDuplicate = finalEntries.some(entry => entry.version === existingEntry.version);
+      logger.debug(
+        `Considering existing entry ${existingEntry.version}, duplicate: ${isDuplicate}`
+      );
+
+      if (!isDuplicate) {
+        // Only preserve if it has content
+        if (this.hasChanges(existingEntry)) {
+          logger.debug(`Preserving existing entry: ${existingEntry.version}`);
+          finalEntries.push(existingEntry);
+        } else {
+          logger.debug(`Skipping empty existing entry: ${existingEntry.version}`);
+        }
+      } else {
+        logger.debug(`Skipping duplicate existing entry: ${existingEntry.version}`);
+      }
+    }
+
+    // If no changes detected, return existing entries to maintain current state
+    if (finalEntries.length === 0) {
+      logger.info('No new changes detected, maintaining existing changelog');
+      return existingEntries;
+    }
+
+    logger.info('Processed changelog entries', {
+      finalCount: finalEntries.length,
+      versions: finalEntries.map(e => e.version),
+    });
+
+    return finalEntries;
+  }
   extractDocumentedVersions(changelog?: string): Set<string> {
     const versions = new Set<string>();
 
@@ -161,40 +258,15 @@ export class KeepChangelogGenerator {
   }
 
   /**
-   * Merge new entries with existing changelog structure
-   */
-  private mergeEntries(
-    existingChangelog: string | undefined,
-    newEntries: ChangelogEntry[]
-  ): ChangelogEntry[] {
-    // If no existing changelog, return new entries as-is
-    if (!existingChangelog) {
-      return newEntries;
-    }
-
-    // Parse existing entries (simplified - just extract versions)
-    const existingVersions = this.extractDocumentedVersions(existingChangelog);
-    const allEntries = [...newEntries];
-
-    // Add placeholder entries for existing versions to maintain sort order
-    for (const version of existingVersions) {
-      if (!newEntries.some(entry => entry.version === version)) {
-        allEntries.push({
-          version,
-          sections: new Map(),
-          // Don't include date for existing entries - will be preserved from existing content
-        });
-      }
-    }
-
-    return allEntries;
-  }
-
-  /**
    * Generate changelog header
    */
   private generateHeader(): string {
     return `# Changelog
+<!-- 
+  Generated by Magic Release (magicr) - https://github.com/warengonzaga/magic-release
+  Author: Waren Gonzaga (opensource@warengonzaga.com)
+  Do not remove this comment - it's used by magicr for efficient changelog updates
+-->
 
 All notable changes to this project will be documented in this file.
 
@@ -390,20 +462,404 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
     const changelogPath = path.join(workingDir, filename);
 
     try {
-      // Create backup if file exists
-      if (existsSync(changelogPath)) {
-        const backupPath = `${changelogPath}.backup`;
-        const existingContent = readFileSync(changelogPath, 'utf8');
-        writeFileSync(backupPath, existingContent, 'utf8');
-        logger.debug(`Created backup: ${backupPath}`);
-      }
-
       writeFileSync(changelogPath, content, 'utf8');
       logger.info(`Changelog written to: ${changelogPath}`);
     } catch (error) {
       throw new ChangelogError(`Failed to write changelog: ${error}`);
     }
   }
+
+  /**
+   * Check if changelog was generated by magicr
+   */
+  static async isMagicrGenerated(content: string): Promise<boolean> {
+    const parser = new (await import('./ChangelogParser.js')).default();
+    return parser.isMagicrGenerated(content);
+  }
+
+  /**
+   * Process entries using scenario-based conversion with structure preservation
+   * This method handles the conversion scenarios detected by MagicRelease
+   */
+  async processEntriesWithScenario(
+    entries: ChangelogEntry[],
+    existingChangelog: string | undefined,
+    scenario:
+      | 'convert-unreleased'
+      | 'use-tag-version'
+      | 'dual-conversion'
+      | 'new-unreleased'
+      | 'no-conversion',
+    _workingDir: string
+  ): Promise<ChangelogEntry[]> {
+    if (!existingChangelog) {
+      logger.info('No existing changelog found, creating from scratch');
+      return entries;
+    }
+
+    const parser = new (await import('./ChangelogParser.js')).default();
+    const existingEntries = parser.parse(existingChangelog);
+
+    logger.debug('Processing entries with scenario', {
+      scenario,
+      entriesCount: entries.length,
+      existingEntriesCount: existingEntries.length,
+    });
+
+    switch (scenario) {
+      case 'convert-unreleased': {
+        // Find the version entry to convert to
+        const versionEntry = entries.find(entry => entry.version !== 'Unreleased');
+        if (!versionEntry) {
+          logger.warn('No version entry found for convert-unreleased scenario');
+          return existingEntries;
+        }
+
+        // Get existing unreleased content with exact structure
+        const unreleasedRaw = parser.extractUnreleasedRaw(existingChangelog);
+        if (!unreleasedRaw) {
+          logger.info('No unreleased content to convert');
+          return [...existingEntries, versionEntry];
+        }
+
+        // Convert the unreleased section to the target version
+        const convertedContent = parser.convertUnreleasedToVersion(
+          unreleasedRaw,
+          versionEntry.version,
+          versionEntry.date ?? new Date()
+        );
+
+        // Parse the converted content to get a proper entry
+        const convertedEntries = parser.parse(`# Changelog\n\n${convertedContent}`);
+        const convertedEntry = convertedEntries[0];
+
+        if (convertedEntry) {
+          // Replace the unreleased with the converted version
+          const finalEntries = existingEntries.filter(entry => entry.version !== 'Unreleased');
+          finalEntries.unshift(convertedEntry);
+          return finalEntries;
+        }
+
+        return existingEntries;
+      }
+
+      case 'dual-conversion': {
+        // Handle both conversion of existing unreleased AND add new unreleased
+        const versionEntry = entries.find(entry => entry.version !== 'Unreleased');
+        const newUnreleasedEntry = entries.find(entry => entry.version === 'Unreleased');
+
+        const finalEntries: ChangelogEntry[] = [];
+
+        // First, add the new unreleased if it exists
+        if (newUnreleasedEntry && this.hasChanges(newUnreleasedEntry)) {
+          finalEntries.push(newUnreleasedEntry);
+        }
+
+        // Then convert existing unreleased to version
+        if (versionEntry) {
+          const unreleasedRaw = parser.extractUnreleasedRaw(existingChangelog);
+          if (unreleasedRaw) {
+            const convertedContent = parser.convertUnreleasedToVersion(
+              unreleasedRaw,
+              versionEntry.version,
+              versionEntry.date ?? new Date()
+            );
+
+            const convertedEntries = parser.parse(`# Changelog\n\n${convertedContent}`);
+            const convertedEntry = convertedEntries[0];
+
+            if (convertedEntry) {
+              finalEntries.push(convertedEntry);
+            }
+          }
+        }
+
+        // Finally, preserve existing versioned entries
+        const existingVersioned = existingEntries.filter(entry => entry.version !== 'Unreleased');
+        finalEntries.push(...existingVersioned);
+
+        return finalEntries;
+      }
+
+      case 'new-unreleased': {
+        // Just add new unreleased, keep everything else as-is
+        const newUnreleasedEntry = entries.find(entry => entry.version === 'Unreleased');
+        if (newUnreleasedEntry && this.hasChanges(newUnreleasedEntry)) {
+          const finalEntries = [...existingEntries.filter(entry => entry.version !== 'Unreleased')];
+          finalEntries.unshift(newUnreleasedEntry);
+          return finalEntries;
+        }
+        return existingEntries;
+      }
+
+      case 'use-tag-version': {
+        // Use the tag version for the new commits, preserve everything else
+        const versionEntry = entries.find(entry => entry.version !== 'Unreleased');
+        if (versionEntry && this.hasChanges(versionEntry)) {
+          const finalEntries = [...existingEntries];
+          finalEntries.unshift(versionEntry);
+          return finalEntries;
+        }
+        return existingEntries;
+      }
+
+      case 'no-conversion':
+      default:
+        // Maintain current state
+        return existingEntries;
+    }
+  }
+
+  /**
+   * Generate changelog with append-only mode for maximum content preservation
+   * This method modifies only the necessary sections, preserving all existing content byte-for-byte
+   */
+  async generateAppendOnly(
+    entries: ChangelogEntry[],
+    existingContent: string,
+    workingDir: string
+  ): Promise<string> {
+    logger.debug('Generating changelog in append-only mode', {
+      entriesCount: entries.length,
+      preserveExisting: true,
+    });
+
+    if (!existingContent) {
+      // No existing content, fallback to normal generation
+      return this.generate(entries, workingDir);
+    }
+
+    // Parse existing content to understand structure
+    const parser = new (await import('./ChangelogParser.js')).default();
+    const existingEntries = parser.parse(existingContent);
+
+    // Check if we have magicr-generated content
+    const isMagicrGenerated = parser.isMagicrGenerated(existingContent);
+
+    if (!isMagicrGenerated) {
+      // For non-magicr changelogs, use minimal modification approach
+      return this.appendToNonMagicrChangelog(entries, existingContent, existingEntries);
+    }
+
+    // For magicr changelogs, use precision content modification
+    return this.appendToMagicrChangelog(entries, existingContent, existingEntries);
+  }
+
+  /**
+   * Append to non-magicr changelog with minimal modifications
+   */
+  private async appendToNonMagicrChangelog(
+    entries: ChangelogEntry[],
+    existingContent: string,
+    existingEntries: ChangelogEntry[]
+  ): Promise<string> {
+    logger.info('Appending to non-magicr changelog with minimal modifications');
+
+    const lines = existingContent.split('\n');
+    const result = [...lines];
+
+    // Find insertion point (after header/description, before first version)
+    let insertionIndex = 0;
+
+    // Skip header and description lines
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]?.trim() ?? '';
+
+      // Look for first version header
+      if (line.match(/^##\s*\[/)) {
+        insertionIndex = i;
+        break;
+      }
+
+      // If we reach the end without finding versions, append at end
+      if (i === lines.length - 1) {
+        insertionIndex = lines.length;
+      }
+    }
+
+    // Generate content for new entries only
+    const newContent: string[] = [];
+
+    for (const entry of entries) {
+      // Check if this version already exists
+      const existsInChangelog = existingEntries.some(
+        existing => existing.version === entry.version
+      );
+
+      if (!existsInChangelog && this.hasChanges(entry)) {
+        newContent.push(''); // Empty line before entry
+        newContent.push(this.formatEntry(entry).trim());
+      }
+    }
+
+    // Insert new content
+    if (newContent.length > 0) {
+      result.splice(insertionIndex, 0, ...newContent);
+    }
+
+    return result.join('\n');
+  }
+
+  /**
+   * Append to magicr-generated changelog with precision modifications
+   */
+  private async appendToMagicrChangelog(
+    entries: ChangelogEntry[],
+    existingContent: string,
+    existingEntries: ChangelogEntry[]
+  ): Promise<string> {
+    logger.info('Appending to magicr changelog with precision modifications');
+
+    let result = existingContent;
+
+    for (const entry of entries) {
+      const existingEntry = existingEntries.find(existing => existing.version === entry.version);
+
+      if (entry.version === 'Unreleased') {
+        // Handle unreleased section updates
+        result = await this.updateUnreleasedSection(result, entry);
+      } else if (!existingEntry && this.hasChanges(entry)) {
+        // Add new version section
+        result = this.insertVersionSection(result, entry);
+      } else if (existingEntry) {
+        // Update existing version section if needed
+        result = this.updateVersionSection(result, entry, existingEntry);
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Update unreleased section with minimal changes
+   */
+  private async updateUnreleasedSection(
+    content: string,
+    newEntry: ChangelogEntry
+  ): Promise<string> {
+    // Create parser instance for this method
+    const parser = new (await import('./ChangelogParser.js')).default();
+    const existingUnreleased = parser.extractUnreleasedRaw(content);
+
+    if (!existingUnreleased) {
+      // No existing unreleased, add new one at top
+      return this.insertUnreleasedAtTop(content, newEntry);
+    }
+
+    if (!this.hasChanges(newEntry)) {
+      // No new changes, keep existing
+      return content;
+    }
+
+    // Replace unreleased section with updated content
+    const newUnreleasedContent = this.formatEntry(newEntry).trim();
+    const lines = content.split('\n');
+    let startIndex = -1;
+    let endIndex = -1;
+
+    // Find unreleased section boundaries
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]?.trim() ?? '';
+      if (line.match(/^##\s*\[Unreleased\]/i)) {
+        startIndex = i;
+      } else if (startIndex !== -1 && line.match(/^##\s*\[/)) {
+        endIndex = i;
+        break;
+      }
+    }
+
+    if (startIndex !== -1) {
+      if (endIndex === -1) endIndex = lines.length;
+
+      const before = lines.slice(0, startIndex);
+      const after = lines.slice(endIndex);
+      const newLines = newUnreleasedContent.split('\n');
+
+      return [...before, ...newLines, '', ...after].join('\n');
+    }
+
+    return content;
+  }
+
+  /**
+   * Insert unreleased section at the top of versions
+   */
+  private insertUnreleasedAtTop(content: string, entry: ChangelogEntry): string {
+    const lines = content.split('\n');
+    let insertionIndex = lines.length;
+
+    // Find first version header
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]?.trim() ?? '';
+      if (line.match(/^##\s*\[/) && !line.match(/unreleased/i)) {
+        insertionIndex = i;
+        break;
+      }
+    }
+
+    const entryContent = this.formatEntry(entry).trim();
+    const newLines = ['', ...entryContent.split('\n'), ''];
+
+    const result = [...lines];
+    result.splice(insertionIndex, 0, ...newLines);
+
+    return result.join('\n');
+  }
+
+  /**
+   * Insert new version section at appropriate position
+   */
+  private insertVersionSection(content: string, entry: ChangelogEntry): string {
+    const lines = content.split('\n');
+    let insertionIndex = lines.length;
+
+    // Find appropriate insertion point (after unreleased, before older versions)
+    let foundUnreleased = false;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]?.trim() ?? '';
+      const versionMatch = line.match(/^##\s*\[([^\]]+)\]/);
+
+      if (versionMatch) {
+        const version = versionMatch[1];
+
+        if (version === 'Unreleased') {
+          foundUnreleased = true;
+          continue;
+        }
+
+        // If we've passed unreleased, this is where we insert
+        if (foundUnreleased || !foundUnreleased) {
+          insertionIndex = i;
+          break;
+        }
+      }
+    }
+
+    const entryContent = this.formatEntry(entry).trim();
+    const newLines = ['', ...entryContent.split('\n'), ''];
+
+    const result = [...lines];
+    result.splice(insertionIndex, 0, ...newLines);
+
+    return result.join('\n');
+  }
+
+  /**
+   * Update existing version section if changes detected
+   */
+  private updateVersionSection(
+    content: string,
+    _newEntry: ChangelogEntry,
+    existingEntry: ChangelogEntry
+  ): string {
+    // For now, preserve existing versioned sections
+    // This can be enhanced to detect and merge specific changes
+    logger.debug(`Preserving existing version section: ${existingEntry.version}`);
+    return content;
+  }
+
+  // ...existing code...
 }
 
 export default KeepChangelogGenerator;

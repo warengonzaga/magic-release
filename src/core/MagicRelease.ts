@@ -24,6 +24,7 @@ import type {
   MagicReleaseConfig,
   RepositoryAnalysis,
   Commit,
+  GitCommit,
   ChangelogEntry,
   ChangeType,
   Tag,
@@ -44,6 +45,22 @@ export interface GenerateOptions {
   dryRun?: boolean;
   verbose?: boolean;
   includeUnreleased?: boolean;
+}
+
+/**
+ * Conversion scenario types for intelligent unreleased conversion
+ */
+interface ConversionScenario {
+  type:
+    | 'convert-unreleased'
+    | 'use-tag-version'
+    | 'dual-conversion'
+    | 'new-unreleased'
+    | 'no-conversion';
+  targetVersion?: string;
+  tagDate?: Date;
+  preserveExistingUnreleased?: boolean;
+  needsNewUnreleased?: boolean;
 }
 
 export class MagicRelease {
@@ -70,6 +87,12 @@ export class MagicRelease {
 
   /** Current working directory */
   private cwd: string;
+
+  /** Current conversion scenario being processed */
+  private currentScenario?: ConversionScenario;
+
+  /** Cache for AI-processed commit descriptions to avoid re-processing */
+  private descriptionCache: Map<string, string> = new Map();
 
   /**
    * Create a new MagicRelease instance
@@ -121,7 +144,7 @@ export class MagicRelease {
 
       // Write to file unless dry run
       if (!options.dryRun) {
-        await this.writeChangelog(changelogContent);
+        await this.safeWriteChangelog(changelogContent);
         logger.info(`Changelog written to ${this.getChangelogPath()}`);
       } else {
         logger.info('Dry run mode - changelog not written to file');
@@ -147,6 +170,30 @@ export class MagicRelease {
    * @returns Complete repository analysis data
    */
   private async analyzeRepository(options: GenerateOptions): Promise<RepositoryAnalysis> {
+    logger.debug('Analyzing repository');
+
+    // Check if we can use changelog-based analysis
+    const existingChangelog = this.getExistingChangelog();
+    if (existingChangelog) {
+      const parser = new (await import('./generator/ChangelogParser.js')).default();
+      const isMagicrGenerated = parser.isMagicrGenerated(existingChangelog);
+
+      if (isMagicrGenerated) {
+        logger.info('Detected magicr-generated changelog, using efficient analysis');
+        return this.analyzeFromChangelog(options);
+      } else {
+        logger.info('Existing changelog found but not magicr-generated, using full analysis');
+      }
+    }
+
+    // Fallback to full git-based analysis
+    return this.analyzeRepositoryFull(options);
+  }
+
+  /**
+   * Full repository analysis (original method)
+   */
+  private async analyzeRepositoryFull(options: GenerateOptions): Promise<RepositoryAnalysis> {
     logger.debug('Analyzing repository');
 
     // Get repository information
@@ -205,6 +252,92 @@ export class MagicRelease {
   }
 
   /**
+   * Analyze repository using changelog-based approach when available
+   */
+  private async analyzeFromChangelog(options: GenerateOptions): Promise<RepositoryAnalysis> {
+    logger.info('Using changelog-based analysis for efficient processing');
+
+    // Get existing changelog
+    const existingChangelog = this.getExistingChangelog();
+    if (!existingChangelog) {
+      throw new Error('Changelog-based analysis requires existing changelog');
+    }
+
+    // Parse changelog for latest version and documented commits
+    const parser = new (await import('./generator/ChangelogParser.js')).default();
+    const latestVersionInChangelog = parser.getLatestVersionFromChangelog(existingChangelog);
+    const documentedCommits = parser.getDocumentedCommits(existingChangelog);
+
+    logger.debug('Changelog analysis', {
+      latestVersion: latestVersionInChangelog,
+      documentedCommitsCount: documentedCommits.size,
+    });
+
+    // Validate changelog integrity
+    this.validateChangelogIntegrity(existingChangelog, documentedCommits);
+
+    // Get repository information (cached)
+    const remoteUrl = this.gitService.getRemoteUrl();
+    const repository = this.parseRepositoryInfo(remoteUrl ?? '');
+
+    // Get tags (optimize by only getting what we need)
+    const gitTags = this.gitService.getAllTags();
+    const tags = this.tagManager.getVersionTags(gitTags);
+
+    // Optimize git scanning range
+    const startingPoint = latestVersionInChangelog ?? options.from ?? null;
+    const endPoint = options.to ?? 'HEAD';
+
+    if (!startingPoint) {
+      logger.warn('No starting point found for incremental scanning, falling back to full scan');
+    } else {
+      logger.info(`Optimized scanning: ${startingPoint}..${endPoint}`);
+    }
+
+    // Get only new commits (since latest changelog version) - optimized
+    const gitCommits = this.gitService.getCommitsBetween(startingPoint ?? undefined, endPoint);
+
+    // Enhanced commit deduplication (hash-based, performance optimized)
+    const newGitCommits = this.deduplicateCommits(gitCommits, documentedCommits);
+
+    logger.info(
+      `Performance: Scanned ${gitCommits.length} commits, ${newGitCommits.length} new (${Math.round((1 - newGitCommits.length / Math.max(gitCommits.length, 1)) * 100)}% reduction)`
+    );
+
+    // Parse only new commits (with caching for repeated categorization)
+    let categorizedCommits = this.commitParser.parseCommits(newGitCommits);
+
+    // Optimize AI processing by filtering already documented commits
+    categorizedCommits = await this.optimizeAIProcessing(categorizedCommits, documentedCommits);
+
+    // Convert to structured format
+    const commits: Commit[] = [];
+    for (const [, categoryCommits] of categorizedCommits) {
+      commits.push(...categoryCommits);
+    }
+
+    // Get existing changelog versions
+    const existingVersions = this.getExistingVersions();
+
+    const analysis: RepositoryAnalysis = {
+      repository,
+      tags,
+      commits,
+      categorizedCommits,
+      newVersions: [],
+      existingVersions,
+    };
+
+    logger.info('Changelog-based analysis complete', {
+      tagsCount: tags.length,
+      newCommitsCount: commits.length,
+      skippedDocumentedCommits: gitCommits.length - newGitCommits.length,
+    });
+
+    return analysis;
+  }
+
+  /**
    * Generate changelog content from analysis
    */
   private async generateChangelogContent(analysis: RepositoryAnalysis): Promise<string> {
@@ -213,7 +346,33 @@ export class MagicRelease {
     // Convert commits to changelog entries
     const entries = await this.createChangelogEntries(analysis);
 
-    // Generate changelog using Keep a Changelog format
+    // If we have a current scenario, use scenario-based processing
+    if (this.currentScenario) {
+      logger.debug('Using scenario-based changelog generation', {
+        scenario: this.currentScenario.type,
+      });
+
+      // Read existing changelog for scenario-based processing
+      const changelogPath = path.join(this.cwd, 'CHANGELOG.md');
+      let existingChangelog: string | undefined;
+
+      if (existsSync(changelogPath)) {
+        existingChangelog = readFileSync(changelogPath, 'utf-8');
+      }
+
+      // Process entries with scenario-specific logic
+      const processedEntries = await this.changelogGenerator.processEntriesWithScenario(
+        entries,
+        existingChangelog,
+        this.currentScenario.type,
+        this.cwd
+      );
+
+      // Generate final changelog using processed entries
+      return this.changelogGenerator.generate(processedEntries, this.cwd);
+    }
+
+    // Fallback to standard generation
     const changelogContent = await this.changelogGenerator.generate(entries, this.cwd);
 
     return changelogContent;
@@ -230,72 +389,139 @@ export class MagicRelease {
       return entries;
     }
 
-    // Group commits by potential versions or create an "Unreleased" entry
-    const unreleasedEntry: ChangelogEntry = {
-      version: 'Unreleased',
-      date: new Date(),
-      sections: new Map(),
-    };
+    // Enhanced logic to handle both release conversion and new unreleased commits
+    const changelogEntries = await this.determineChangelogEntries(analysis);
 
-    // Use the categorized commits from the analysis instead of re-fetching
-    const categorizedCommits = analysis.categorizedCommits;
+    for (const entryInfo of changelogEntries) {
+      const changelogEntry: ChangelogEntry = {
+        version: entryInfo.version,
+        ...(entryInfo.date && { date: entryInfo.date }),
+        sections: new Map(),
+      };
 
-    // Convert categorized commits to changelog entries
-    const categorizedChanges = new Map<
-      ChangeType,
-      Array<{
-        description: string;
-        commits: Commit[];
-        scope?: string;
-        pr?: number;
-        issues?: string[];
-      }>
-    >();
+      // Use the categorized commits from the analysis
+      const categorizedCommits = entryInfo.commits;
 
-    // Process each category from CommitParser
-    for (const [category, categoryCommits] of categorizedCommits) {
-      // Sort commits within category by date (newest first)
-      const sortedCategoryCommits = [...categoryCommits].sort((a, b) => {
-        const dateA = a.date ?? new Date(0);
-        const dateB = b.date ?? new Date(0);
-        return dateB.getTime() - dateA.getTime();
-      });
+      // Convert categorized commits to changelog entries
+      const categorizedChanges = new Map<
+        ChangeType,
+        Array<{
+          description: string;
+          commits: Commit[];
+          scope?: string;
+          pr?: number;
+          issues?: string[];
+        }>
+      >();
 
-      const changes = await Promise.all(
-        sortedCategoryCommits.map(async commit => ({
-          description: await this.generateChangeDescription(commit),
-          commits: [commit],
-          ...(commit.scope && { scope: commit.scope }),
-          ...(commit.pr && { pr: commit.pr }),
-          ...(commit.issues && commit.issues.length > 0 && { issues: commit.issues }),
-        }))
-      );
+      // Process each category from CommitParser
+      for (const [category, categoryCommits] of categorizedCommits) {
+        // Sort commits within category by date (newest first)
+        const sortedCategoryCommits = [...categoryCommits].sort((a, b) => {
+          const dateA = a.date ?? new Date(0);
+          const dateB = b.date ?? new Date(0);
+          return dateB.getTime() - dateA.getTime();
+        });
 
-      categorizedChanges.set(category, changes);
-    }
+        // Pre-process all commits in this category with batch optimization
+        await this.batchProcessDescriptions(sortedCategoryCommits);
 
-    // Add categorized changes to sections in Keep a Changelog order
-    const changelogOrder: ChangeType[] = [
-      'Added',
-      'Changed',
-      'Deprecated',
-      'Removed',
-      'Fixed',
-      'Security',
-    ];
+        const changes = await Promise.all(
+          sortedCategoryCommits.map(async commit => ({
+            description: await this.generateChangeDescription(commit),
+            commits: [commit],
+            ...(commit.scope && { scope: commit.scope }),
+            ...(commit.pr && { pr: commit.pr }),
+            ...(commit.issues && commit.issues.length > 0 && { issues: commit.issues }),
+          }))
+        );
 
-    for (const category of changelogOrder) {
-      if (categorizedChanges.has(category)) {
-        const changes = categorizedChanges.get(category);
-        if (changes) {
-          // Changes are already in newest-first order from sorting
-          unreleasedEntry.sections.set(category, changes);
+        categorizedChanges.set(category, changes);
+      }
+
+      // Add categorized changes to sections in Keep a Changelog order
+      const changelogOrder: ChangeType[] = [
+        'Added',
+        'Changed',
+        'Deprecated',
+        'Removed',
+        'Fixed',
+        'Security',
+      ];
+
+      for (const category of changelogOrder) {
+        if (categorizedChanges.has(category)) {
+          const changes = categorizedChanges.get(category);
+          if (changes) {
+            // Changes are already in newest-first order from sorting
+            changelogEntry.sections.set(category, changes);
+          }
         }
       }
+
+      entries.push(changelogEntry);
     }
 
-    entries.push(unreleasedEntry);
     return entries;
+  }
+
+  /**
+   * Determine what changelog entries to create based on repository state
+   */
+  /**
+   * Enhanced determination of changelog entries with improved conversion detection
+   * Handles edge cases and provides better logic for when to convert unreleased to version
+   */
+  private async determineChangelogEntries(analysis: RepositoryAnalysis): Promise<
+    Array<{
+      version: string;
+      date?: Date;
+      commits: Map<ChangeType, Commit[]>;
+    }>
+  > {
+    const { tags, categorizedCommits } = analysis;
+    const existingChangelog = this.getExistingChangelog();
+    const hasExistingUnreleased = existingChangelog?.includes('## [Unreleased]') ?? false;
+
+    // Get latest tag information with enhanced validation
+    const latestTag = tags.length > 0 ? this.tagManager.getLatestTag(tags) : null;
+
+    if (!latestTag) {
+      // No tags exist, everything goes to Unreleased
+      logger.debug('No tags found, creating Unreleased entry');
+      return [
+        {
+          version: 'Unreleased',
+          date: new Date(),
+          commits: categorizedCommits,
+        },
+      ];
+    }
+
+    try {
+      const headCommit = this.gitService.getCommitHash('HEAD');
+      const tagCommit = latestTag.hash;
+
+      // Enhanced conversion detection logic
+      const conversionScenario = this.detectConversionScenario(
+        headCommit,
+        tagCommit,
+        hasExistingUnreleased,
+        latestTag,
+        categorizedCommits
+      );
+
+      return this.executeConversionScenario(conversionScenario, latestTag, categorizedCommits);
+    } catch (error) {
+      logger.warn('Could not compare tag and HEAD commits, defaulting to Unreleased', error);
+      return [
+        {
+          version: 'Unreleased',
+          date: new Date(),
+          commits: categorizedCommits,
+        },
+      ];
+    }
   }
 
   /**
@@ -303,6 +529,13 @@ export class MagicRelease {
    * Uses LLM to rephrase commit messages into clear, present imperative tense
    */
   private async generateChangeDescription(commit: Commit): Promise<string> {
+    // Check cache first
+    const cacheKey = commit.hash;
+    if (this.descriptionCache.has(cacheKey)) {
+      logger.debug(`Cache hit for commit ${commit.hash}`);
+      return this.descriptionCache.get(cacheKey) ?? '';
+    }
+
     try {
       // Use LLM service to rephrase the commit message
       const response = await this.llmService.rephraseCommitMessage(commit.message);
@@ -316,6 +549,10 @@ export class MagicRelease {
         cleaned = cleaned.replace(/^-\s*/, '');
         // Ensure it starts with capital letter
         cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+
+        // Store in cache
+        this.descriptionCache.set(cacheKey, cleaned);
+
         return cleaned;
       }
     } catch (error) {
@@ -358,6 +595,9 @@ export class MagicRelease {
     // Convert to human-readable, present imperative tense
     // Ensure it starts with a capital letter and action verb
     description = this.convertToImperativeTense(description, commit);
+
+    // Store fallback result in cache too
+    this.descriptionCache.set(cacheKey, description);
 
     return description;
   }
@@ -614,6 +854,449 @@ export class MagicRelease {
 
     return results;
   }
+
+  /**
+   * Determine the target version for commits based on repository analysis
+   *
+   * This method analyzes the relationship between commits, tags, and HEAD to determine
+   * whether commits should be marked as "Unreleased" or associated with a specific version.
+   *
+   * Logic:
+   * - If there's a tag at HEAD that contains all the commits, use that tag's version
+   * - If commits are after the latest tag, mark as "Unreleased"
+   * - If no tags exist, mark as "Unreleased"
+   *
+   * TODO: Add CLI flags to control date behavior for changelog generation
+   * Features to implement:
+   * - `--use-commit-date`: Use the commit date instead of tag creation date
+   * - `--use-tag-date`: Use the tag creation date (current default behavior)
+   * - `--date-source=<commit|tag|custom>`: Allow users to specify date source
+   * - `--custom-date=<YYYY-MM-DD>`: Allow manual date override
+   */
+  /**
+   * Enhanced commit deduplication with performance optimization
+   * Uses hash-based comparison for accuracy and efficiency
+   */
+  private deduplicateCommits(gitCommits: GitCommit[], documentedCommits: Set<string>): GitCommit[] {
+    const startTime = Date.now();
+
+    // Create lookup set for O(1) performance
+    const documentedHashLookup = new Set<string>();
+
+    // Add both short and full hashes to lookup set
+    for (const hash of documentedCommits) {
+      documentedHashLookup.add(hash);
+      // Also add full hash if this is a short hash
+      if (hash.length === 7) {
+        // Find matching full hash in git commits
+        const fullHash = gitCommits.find(commit => commit.hash.startsWith(hash))?.hash;
+        if (fullHash) {
+          documentedHashLookup.add(fullHash);
+        }
+      }
+      // Also add short hash if this is a full hash
+      if (hash.length > 7) {
+        documentedHashLookup.add(hash.substring(0, 7));
+      }
+    }
+
+    // Filter with optimized lookup
+    const newCommits = gitCommits.filter(commit => {
+      const shortHash = commit.hash.substring(0, 7);
+      const isDocumented =
+        documentedHashLookup.has(commit.hash) || documentedHashLookup.has(shortHash);
+      return !isDocumented;
+    });
+
+    const elapsed = Date.now() - startTime;
+    logger.debug(
+      `Deduplication completed in ${elapsed}ms: ${gitCommits.length} → ${newCommits.length} commits`
+    );
+
+    return newCommits;
+  }
+
+  /**
+   * Validate changelog integrity to detect corruption
+   * Checks for structural issues and potential manual edits that could break processing
+   */
+  private validateChangelogIntegrity(changelog: string, documentedCommits: Set<string>): void {
+    logger.debug('Validating changelog integrity');
+
+    // Check for magicr indicator presence
+    if (!changelog.includes('Generated by Magic Release (magicr)')) {
+      logger.warn('Changelog missing magicr indicator - may have been manually modified');
+    }
+
+    // Check for malformed version headers
+    const versionHeaders = changelog.match(/^##\s*\[([^\]]*)\]/gm);
+    if (!versionHeaders || versionHeaders.length === 0) {
+      throw new Error('Changelog appears corrupted: No valid version headers found');
+    }
+
+    // Check for orphaned commit references (references to commits not in git)
+    const referencedHashes = Array.from(documentedCommits);
+    const invalidHashes = referencedHashes.filter(hash => {
+      // Basic validation - should be hex string of appropriate length
+      return !/^[a-f0-9]{7,40}$/i.test(hash);
+    });
+
+    if (invalidHashes.length > 0) {
+      logger.warn(
+        `Found ${invalidHashes.length} invalid commit hash references in changelog:`,
+        invalidHashes
+      );
+    }
+
+    // Check for duplicate version sections
+    const versions = new Set<string>();
+    const duplicates: string[] = [];
+
+    versionHeaders.forEach(header => {
+      const match = header.match(/\[([^\]]+)\]/);
+      if (match?.[1]) {
+        const version = match[1];
+        if (versions.has(version)) {
+          duplicates.push(version);
+        } else {
+          versions.add(version);
+        }
+      }
+    });
+
+    if (duplicates.length > 0) {
+      throw new Error(
+        `Changelog corrupted: Duplicate version sections found: ${duplicates.join(', ')}`
+      );
+    }
+
+    logger.debug('Changelog integrity validation passed');
+  }
+
+  /**
+   * Enhanced conversion scenario detection with better edge case handling
+   */
+  private detectConversionScenario(
+    headCommit: string,
+    tagCommit: string,
+    hasExistingUnreleased: boolean,
+    latestTag: Tag,
+    categorizedCommits: Map<ChangeType, Commit[]>
+  ): ConversionScenario {
+    const isTagAtHead = headCommit === tagCommit;
+    const hasNewCommits = Array.from(categorizedCommits.values()).some(
+      commits => commits.length > 0
+    );
+
+    logger.debug('Conversion detection', {
+      tagAtHead: isTagAtHead,
+      hasUnreleased: hasExistingUnreleased,
+      hasNewCommits,
+      tagVersion: latestTag.version,
+    });
+
+    // Scenario 1: Tag at HEAD + existing unreleased → Convert unreleased to version
+    if (isTagAtHead && hasExistingUnreleased) {
+      logger.info(
+        `Tag ${latestTag.version} at HEAD with existing unreleased - converting to version`
+      );
+      return {
+        type: 'convert-unreleased',
+        targetVersion: latestTag.version,
+        tagDate: latestTag.date,
+        preserveExistingUnreleased: true,
+      };
+    }
+
+    // Scenario 2: Tag at HEAD + new commits → Use tag version for commits
+    if (isTagAtHead && hasNewCommits) {
+      logger.info(`Tag ${latestTag.version} at HEAD with new commits - using tag version`);
+      return {
+        type: 'use-tag-version',
+        targetVersion: latestTag.version,
+        tagDate: latestTag.date,
+      };
+    }
+
+    // Scenario 3: Tag behind HEAD + existing unreleased → Convert + add new unreleased
+    if (!isTagAtHead && hasExistingUnreleased) {
+      logger.info(
+        `Tag ${latestTag.version} behind HEAD with existing unreleased - dual conversion`
+      );
+      return {
+        type: 'dual-conversion',
+        targetVersion: latestTag.version,
+        tagDate: latestTag.date,
+        needsNewUnreleased: true,
+      };
+    }
+
+    // Scenario 4: Tag behind HEAD + new commits → New unreleased only
+    if (!isTagAtHead && hasNewCommits) {
+      logger.info(`Tag ${latestTag.version} behind HEAD with new commits - new unreleased`);
+      return {
+        type: 'new-unreleased',
+      };
+    }
+
+    // Scenario 5: No new commits → Maintain current state
+    logger.debug('No conversion needed - maintaining current state');
+    return {
+      type: 'no-conversion',
+    };
+  }
+
+  /**
+   * Execute the determined conversion scenario with preserved structure
+   */
+  private async executeConversionScenario(
+    scenario: ConversionScenario,
+    latestTag: Tag,
+    categorizedCommits: Map<ChangeType, Commit[]>
+  ): Promise<Array<{ version: string; date?: Date; commits: Map<ChangeType, Commit[]> }>> {
+    // Store the current scenario for use in generation
+    this.currentScenario = scenario;
+
+    switch (scenario.type) {
+      case 'convert-unreleased':
+        return [
+          {
+            version: scenario.targetVersion ?? latestTag.version,
+            date: scenario.tagDate ?? new Date(),
+            commits: new Map(), // Conversion handled by KeepChangelogGenerator
+          },
+        ];
+
+      case 'use-tag-version':
+        return [
+          {
+            version: scenario.targetVersion ?? latestTag.version,
+            date: scenario.tagDate ?? new Date(),
+            commits: categorizedCommits,
+          },
+        ];
+
+      case 'dual-conversion':
+        // Get commits since the tag for new unreleased section
+        const commitsRange = this.gitService.getCommitsBetween(latestTag.name, 'HEAD');
+        const newCategorizedCommits = this.commitParser.parseCommits(commitsRange);
+
+        logger.debug(
+          `Dual conversion: ${scenario.targetVersion} + ${commitsRange.length} new commits to unreleased`
+        );
+
+        return [
+          {
+            version: scenario.targetVersion ?? latestTag.version,
+            date: scenario.tagDate ?? new Date(),
+            commits: new Map(), // Existing unreleased converted by generator
+          },
+          {
+            version: 'Unreleased',
+            date: new Date(),
+            commits: newCategorizedCommits,
+          },
+        ];
+
+      case 'new-unreleased':
+        return [
+          {
+            version: 'Unreleased',
+            date: new Date(),
+            commits: categorizedCommits,
+          },
+        ];
+
+      case 'no-conversion':
+      default:
+        // Return empty to maintain current changelog state
+        return [];
+    }
+  }
+
+  /**
+   * Optimize AI processing by batch processing commits and skipping documented ones
+   */
+  private async optimizeAIProcessing(
+    categorizedCommits: Map<ChangeType, Commit[]>,
+    documentedCommits?: Set<string>
+  ): Promise<Map<ChangeType, Commit[]>> {
+    if (!documentedCommits || documentedCommits.size === 0) {
+      return categorizedCommits;
+    }
+
+    logger.info('Optimizing AI processing - filtering already documented commits');
+
+    const optimizedMap = new Map<ChangeType, Commit[]>();
+    let filteredCount = 0;
+    let totalCount = 0;
+
+    for (const [category, commits] of categorizedCommits) {
+      const undocumentedCommits = commits.filter(commit => {
+        totalCount++;
+        const isDocumented =
+          documentedCommits.has(commit.hash) || documentedCommits.has(commit.hash.substring(0, 7));
+
+        if (isDocumented) {
+          filteredCount++;
+          return false;
+        }
+        return true;
+      });
+
+      if (undocumentedCommits.length > 0) {
+        optimizedMap.set(category, undocumentedCommits);
+      }
+    }
+
+    const reductionPercentage = Math.round((filteredCount / Math.max(totalCount, 1)) * 100);
+    logger.info(
+      `AI Processing optimization: ${filteredCount}/${totalCount} commits skipped (${reductionPercentage}% reduction)`
+    );
+
+    return optimizedMap;
+  }
+
+  /**
+   * Batch process commits for AI description generation to improve performance
+   */
+  private async batchProcessDescriptions(commits: Commit[]): Promise<void> {
+    const batchSize = 10; // Process in batches to avoid overwhelming the AI service
+    const totalBatches = Math.ceil(commits.length / batchSize);
+
+    logger.debug(`Processing ${commits.length} commits in ${totalBatches} batches of ${batchSize}`);
+
+    for (let i = 0; i < totalBatches; i++) {
+      const start = i * batchSize;
+      const end = Math.min(start + batchSize, commits.length);
+      const batch = commits.slice(start, end);
+
+      logger.debug(`Processing batch ${i + 1}/${totalBatches} (${batch.length} commits)`);
+
+      // Process batch concurrently but with controlled concurrency
+      const batchPromises = batch.map(commit => this.generateChangeDescription(commit));
+      await Promise.all(batchPromises);
+
+      // Small delay between batches to be respectful to AI service rate limits
+      if (i < totalBatches - 1) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+  }
+
+  /**
+   * Create backup of existing changelog before modifications
+   * Returns the backup file path for potential rollback
+   */
+  private async createChangelogBackup(): Promise<string | null> {
+    const changelogPath = this.getChangelogPath();
+
+    if (!existsSync(changelogPath)) {
+      logger.debug('No existing changelog to backup');
+      return null;
+    }
+
+    try {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const backupFileName = `CHANGELOG.backup.${timestamp}.md`;
+      const backupPath = path.join(this.cwd, backupFileName);
+
+      const originalContent = readFileSync(changelogPath, 'utf-8');
+      const fs = await import('fs/promises');
+      await fs.writeFile(backupPath, originalContent, 'utf-8');
+
+      logger.info(`Changelog backup created: ${backupFileName}`);
+
+      return backupPath;
+    } catch (error) {
+      logger.warn('Failed to create changelog backup', error);
+      return null;
+    }
+  }
+
+  /**
+   * Restore changelog from backup file
+   */
+  private async restoreFromBackup(backupPath: string): Promise<boolean> {
+    try {
+      const changelogPath = this.getChangelogPath();
+      const fs = await import('fs/promises');
+
+      const backupContent = await fs.readFile(backupPath, 'utf-8');
+      await fs.writeFile(changelogPath, backupContent, 'utf-8');
+
+      logger.info(`Changelog restored from backup: ${path.basename(backupPath)}`);
+      return true;
+    } catch (error) {
+      logger.error('Failed to restore changelog from backup', error);
+      return false;
+    }
+  }
+
+  /**
+   * Clean up old backup files to prevent accumulation
+   */
+  private async cleanupOldBackups(maxAge: number = 7): Promise<void> {
+    try {
+      const fs = await import('fs/promises');
+      const files = await fs.readdir(this.cwd);
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - maxAge);
+
+      const backupFiles = files.filter(file =>
+        file.match(/^CHANGELOG\.backup\.\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z\.md$/)
+      );
+
+      let cleanedCount = 0;
+      for (const file of backupFiles) {
+        const filePath = path.join(this.cwd, file);
+        const stats = await fs.stat(filePath);
+
+        if (stats.mtime < cutoffDate) {
+          await fs.unlink(filePath);
+          cleanedCount++;
+          logger.debug(`Cleaned up old backup: ${file}`);
+        }
+      }
+
+      if (cleanedCount > 0) {
+        logger.info(`Cleaned up ${cleanedCount} old backup files`);
+      }
+    } catch (error) {
+      logger.debug('Backup cleanup failed', error);
+    }
+  }
+
+  /**
+   * Safe changelog write with automatic backup and rollback
+   */
+  private async safeWriteChangelog(content: string): Promise<void> {
+    const backupPath = await this.createChangelogBackup();
+
+    try {
+      await this.writeChangelog(content);
+
+      // Clean up old backups after successful write
+      await this.cleanupOldBackups();
+
+      logger.debug('Changelog written successfully with backup protection');
+    } catch (error) {
+      logger.error('Failed to write changelog, attempting rollback', error);
+
+      if (backupPath) {
+        const rollbackSuccess = await this.restoreFromBackup(backupPath);
+        if (rollbackSuccess) {
+          logger.info('Changelog successfully rolled back to previous state');
+        } else {
+          logger.error('Rollback failed - manual intervention may be required');
+        }
+      }
+
+      throw error;
+    }
+  }
+
+  // ...existing code...
 }
 
 export default MagicRelease;
