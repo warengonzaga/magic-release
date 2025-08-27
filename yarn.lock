@@ -2554,6 +2554,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"chalk@npm:^5.5.0":
+  version: 5.6.0
+  resolution: "chalk@npm:5.6.0"
+  checksum: 8/245d4b53c29c88da9e291f318c86b6b3ee65aa81568f9e10fafc984a6ef520412dee513057d07cc0f4614ab5a46cb07a0394fab3794d88d48c89c17b2d8fbf7f
+  languageName: node
+  linkType: hard
+
 "char-regex@npm:^1.0.2":
   version: 1.0.2
   resolution: "char-regex@npm:1.0.2"
@@ -3986,7 +3993,7 @@ __metadata:
 
 "fsevents@patch:fsevents@npm%3A^2.3.3#~builtin<compat/fsevents>, fsevents@patch:fsevents@npm%3A~2.3.2#~builtin<compat/fsevents>":
   version: 2.3.3
-  resolution: "fsevents@patch:fsevents@npm%3A2.3.3#~builtin<compat/fsevents>::version=2.3.3&hash=df0bf1"
+  resolution: "fsevents@patch:fsevents@npm%3A2.3.3#~builtin<compat/fsevents>::version=2.3.3&hash=18f3a7"
   dependencies:
     node-gyp: "npm:latest"
   conditions: os=darwin
@@ -5841,7 +5848,7 @@ __metadata:
     "@typescript-eslint/eslint-plugin": ^8.13.0
     "@typescript-eslint/parser": ^8.13.0
     "@wgtechlabs/log-engine": ^2.2.0
-    chalk: ^5.3.0
+    chalk: ^5.5.0
     conf: ^13.0.1
     date-fns: ^4.1.0
     eslint: ^9.15.0
@@ -6918,7 +6925,7 @@ __metadata:
 
 "resolve@patch:resolve@npm%3A^1.10.1#~builtin<compat/resolve>, resolve@patch:resolve@npm%3A^1.22.4#~builtin<compat/resolve>":
   version: 1.22.10
-  resolution: "resolve@patch:resolve@npm%3A1.22.10#~builtin<compat/resolve>::version=1.22.10&hash=c3c19d"
+  resolution: "resolve@patch:resolve@npm%3A1.22.10#~builtin<compat/resolve>::version=1.22.10&hash=07638b"
   dependencies:
     is-core-module: "npm:^2.16.0"
     path-parse: "npm:^1.0.7"
@@ -6931,7 +6938,7 @@ __metadata:
 
 "resolve@patch:resolve@npm%3A^2.0.0-next.5#~builtin<compat/resolve>":
   version: 2.0.0-next.5
-  resolution: "resolve@patch:resolve@npm%3A2.0.0-next.5#~builtin<compat/resolve>::version=2.0.0-next.5&hash=c3c19d"
+  resolution: "resolve@patch:resolve@npm%3A2.0.0-next.5#~builtin<compat/resolve>::version=2.0.0-next.5&hash=07638b"
   dependencies:
     is-core-module: "npm:^2.13.0"
     path-parse: "npm:^1.0.7"
@@ -8005,7 +8012,7 @@ __metadata:
 
 "typescript@patch:typescript@^5.6.3#~builtin<compat/typescript>":
   version: 5.8.3
-  resolution: "typescript@patch:typescript@npm%3A5.8.3#~builtin<compat/typescript>::version=5.8.3&hash=d73830"
+  resolution: "typescript@patch:typescript@npm%3A5.8.3#~builtin<compat/typescript>::version=5.8.3&hash=701156"
   bin:
     tsc: bin/tsc
     tsserver: bin/tsserver
