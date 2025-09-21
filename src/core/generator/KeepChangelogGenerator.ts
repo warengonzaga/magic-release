@@ -146,7 +146,7 @@ export class KeepChangelogGenerator {
     }
 
     // Parse existing changelog to get structured entries
-    const parser = new (await import('./ChangelogParser.js')).default();
+    const parser = new ChangelogParser();
     const existingEntries = parser.parse(existingChangelog);
     const documentedVersions = this.extractDocumentedVersions(existingChangelog);
 
