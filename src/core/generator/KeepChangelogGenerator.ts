@@ -18,6 +18,7 @@ import path from 'path';
 import type { ChangelogEntry, Change, ChangeType, MagicReleaseConfig } from '../../types/index.js';
 import { ChangelogError } from '../../utils/errors.js';
 import { logger } from '../../utils/logger.js';
+import ChangelogParser from './ChangelogParser.js';
 
 export interface GeneratorOptions {
   includeCompareLinks?: boolean;
