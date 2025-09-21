@@ -2,11 +2,15 @@
 
 [![member of ossph](https://img.shields.io/badge/member-OSS%20PH-0060a0.svg?logo=github&longCache=true&labelColor=181717&style=flat-square)](https://github.com/ossphilippines) [![sponsors](https://img.shields.io/badge/sponsor-%E2%9D%A4-%23db61a2.svg?&logo=github&logoColor=white&labelColor=181717&style=flat-square)](https://github.com/sponsors/warengonzaga) [![release](https://img.shields.io/github/release/warengonzaga/magic-release.svg?logo=github&labelColor=181717&color=green&style=flat-square)](https://github.com/warengonzaga/magic-release/releases) [![star](https://img.shields.io/github/stars/warengonzaga/magic-release.svg?&logo=github&labelColor=181717&color=yellow&style=flat-square)](https://github.com/warengonzaga/magic-release/stargazers) [![license](https://img.shields.io/github/license/warengonzaga/magic-release.svg?&logo=github&labelColor=181717&style=flat-square)](https://github.com/warengonzaga/magic-release/blob/main/license) [![NPM Installs](https://img.shields.io/npm/dt/magicr?color=CB3837&logo=npm&label=installs&labelColor=181717&style=flat-square)](https://npmjs.com/package/magicr)
 
-<!-- ![banner](https://your-banner-url.com) -->
+![banner](.github/assets/banner.png)
 
 > 🪄 AI-powered changelog generator that transforms your Git commit history into beautiful, professional changelogs following Keep a Changelog standards.
 
 Magic Release automatically generates comprehensive, well-structured changelogs from your Git commit history using advanced AI. Simply run `magicr` in your repository and watch as it intelligently categorizes commits, creates semantic release notes, and produces professional documentation that your users will love. ✨
+
+## 📽️ Demo
+
+![demo](.github/assets/demo.gif)
 
 ## ✨ Key Features
 
