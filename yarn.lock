@@ -2554,6 +2554,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"chalk@npm:^5.6.0":
+  version: 5.6.2
+  resolution: "chalk@npm:5.6.2"
+  checksum: 8/4ee2d47a626d79ca27cb5299ecdcce840ef5755e287412536522344db0fc51ca0f6d6433202332c29e2288c6a90a2b31f3bd626bc8c14743b6b6ee28abd3b796
+  languageName: node
+  linkType: hard
+
 "char-regex@npm:^1.0.2":
   version: 1.0.2
   resolution: "char-regex@npm:1.0.2"
@@ -5833,46 +5840,46 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "magicr@workspace:."
   dependencies:
-    "@types/eslint-plugin-security": ^3.0.0
-    "@types/jest": ^30.0.0
-    "@types/node": ^22.7.9
-    "@types/prop-types": ^15.7.15
-    "@types/react": ^18.3.12
-    "@typescript-eslint/eslint-plugin": ^8.13.0
-    "@typescript-eslint/parser": ^8.13.0
-    "@wgtechlabs/log-engine": ^2.2.0
-    chalk: ^5.3.0
-    conf: ^13.0.1
-    date-fns: ^4.1.0
-    eslint: ^9.15.0
-    eslint-config-prettier: ^9.1.0
-    eslint-import-resolver-typescript: ^4.4.4
-    eslint-plugin-import: ^2.31.0
-    eslint-plugin-node: ^11.1.0
-    eslint-plugin-prettier: ^5.2.1
-    eslint-plugin-react: ^7.37.2
-    eslint-plugin-react-hooks: ^5.0.0
-    eslint-plugin-security: ^3.0.1
-    eslint-plugin-security-node: ^1.1.4
-    execa: ^9.6.1
-    ink: ^5.0.1
-    ink-big-text: ^2.0.0
-    ink-gradient: ^3.0.0
-    ink-select-input: ^6.0.0
-    ink-spinner: ^5.0.0
-    is-git-repository: ^2.0.0
-    jest: ^30.0.3
-    meow: ^13.2.0
-    openai: ^4.67.3
-    prettier: ^3.3.3
-    react: ^18.3.1
-    rimraf: ^6.0.1
-    simple-git: ^3.27.0
-    snyk: ^1.1297.3
-    ts-jest: ^29.4.0
-    tsup: ^8.3.5
-    typescript: ^5.6.3
-    zod: ^3.25.76
+    "@types/eslint-plugin-security": "npm:^3.0.0"
+    "@types/jest": "npm:^30.0.0"
+    "@types/node": "npm:^22.7.9"
+    "@types/prop-types": "npm:^15.7.15"
+    "@types/react": "npm:^18.3.12"
+    "@typescript-eslint/eslint-plugin": "npm:^8.13.0"
+    "@typescript-eslint/parser": "npm:^8.13.0"
+    "@wgtechlabs/log-engine": "npm:^2.2.0"
+    chalk: "npm:^5.6.0"
+    conf: "npm:^13.0.1"
+    date-fns: "npm:^4.1.0"
+    eslint: "npm:^9.15.0"
+    eslint-config-prettier: "npm:^9.1.0"
+    eslint-import-resolver-typescript: "npm:^4.4.4"
+    eslint-plugin-import: "npm:^2.31.0"
+    eslint-plugin-node: "npm:^11.1.0"
+    eslint-plugin-prettier: "npm:^5.2.1"
+    eslint-plugin-react: "npm:^7.37.2"
+    eslint-plugin-react-hooks: "npm:^5.0.0"
+    eslint-plugin-security: "npm:^3.0.1"
+    eslint-plugin-security-node: "npm:^1.1.4"
+    execa: "npm:^9.5.1"
+    ink: "npm:^5.0.1"
+    ink-big-text: "npm:^2.0.0"
+    ink-gradient: "npm:^3.0.0"
+    ink-select-input: "npm:^6.0.0"
+    ink-spinner: "npm:^5.0.0"
+    is-git-repository: "npm:^2.0.0"
+    jest: "npm:^30.0.3"
+    meow: "npm:^13.2.0"
+    openai: "npm:^4.67.3"
+    prettier: "npm:^3.3.3"
+    react: "npm:^18.3.1"
+    rimraf: "npm:^6.0.1"
+    simple-git: "npm:^3.27.0"
+    snyk: "npm:^1.1297.3"
+    ts-jest: "npm:^29.4.0"
+    tsup: "npm:^8.3.5"
+    typescript: "npm:^5.6.3"
+    zod: "npm:^3.25.76"
   bin:
     magicr: ./dist/cli/index.js
   languageName: unknown
