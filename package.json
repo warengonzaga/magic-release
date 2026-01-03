@@ -24,9 +24,9 @@
   "homepage": "https://github.com/warengonzaga/magic-release#readme",
   "engines": {
     "node": ">=20.0.0",
-    "yarn": ">=4.0.0"
+    "pnpm": ">=9.0.0"
   },
-  "packageManager": "yarn@4.9.2",
+  "packageManager": "pnpm@10.27.0",
   "bin": "./dist/cli/index.js",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -46,18 +46,18 @@
     "lint:security": "eslint src/**/*.ts --config eslint.security.config.js",
     "secure:code": "snyk code test --public",
     "secure:scan": "snyk test",
-    "secure": "yarn secure:scan && yarn secure:code && yarn lint:security",
-    "security": "yarn secure",
+    "secure": "pnpm secure:scan && pnpm secure:code && pnpm lint:security",
+    "security": "pnpm secure",
     "format": "prettier --write \"src/**/*.{ts,tsx,json,md}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,json,md}\"",
-    "precommit": "yarn lint:check && yarn format:check && yarn type-check",
-    "prepublishOnly": "yarn clean && yarn build",
+    "precommit": "pnpm lint:check && pnpm format:check && pnpm type-check",
+    "prepublishOnly": "pnpm clean && pnpm build",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:ci": "jest --ci --coverage --watchAll=false",
-    "validate": "yarn lint && yarn test && yarn build",
-    "validate:full": "yarn install && yarn lint && yarn test:coverage && yarn build && yarn secure",
+    "validate": "pnpm lint && pnpm test && pnpm build",
+    "validate:full": "pnpm install && pnpm lint && pnpm test:coverage && pnpm build && pnpm secure",
     "magicr": "node dist/cli/index.js"
   },
   "dependencies": {
@@ -75,6 +75,7 @@
     "meow": "^13.2.0",
     "openai": "^4.67.3",
     "react": "^18.3.1",
+    "semver": "^7.7.3",
     "simple-git": "^3.30.0",
     "zod": "^3.25.76"
   },
@@ -84,6 +85,7 @@
     "@types/node": "^22.7.9",
     "@types/prop-types": "^15.7.15",
     "@types/react": "^18.3.12",
+    "@types/semver": "^7.7.1",
     "@typescript-eslint/eslint-plugin": "^8.13.0",
     "@typescript-eslint/parser": "^8.13.0",
     "eslint": "^9.15.0",
