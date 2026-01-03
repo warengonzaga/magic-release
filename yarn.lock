@@ -2554,6 +2554,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"chalk@npm:^5.6.0":
+  version: 5.6.2
+  resolution: "chalk@npm:5.6.2"
+  checksum: 8/4ee2d47a626d79ca27cb5299ecdcce840ef5755e287412536522344db0fc51ca0f6d6433202332c29e2288c6a90a2b31f3bd626bc8c14743b6b6ee28abd3b796
+  languageName: node
+  linkType: hard
+
 "char-regex@npm:^1.0.2":
   version: 1.0.2
   resolution: "char-regex@npm:1.0.2"
@@ -3699,23 +3706,23 @@ __metadata:
   languageName: node
   linkType: hard
 
-"execa@npm:^9.5.1":
-  version: 9.6.0
-  resolution: "execa@npm:9.6.0"
+"execa@npm:^9.6.1":
+  version: 9.6.1
+  resolution: "execa@npm:9.6.1"
   dependencies:
-    "@sindresorhus/merge-streams": "npm:^4.0.0"
-    cross-spawn: "npm:^7.0.6"
-    figures: "npm:^6.1.0"
-    get-stream: "npm:^9.0.0"
-    human-signals: "npm:^8.0.1"
-    is-plain-obj: "npm:^4.1.0"
-    is-stream: "npm:^4.0.1"
-    npm-run-path: "npm:^6.0.0"
-    pretty-ms: "npm:^9.2.0"
-    signal-exit: "npm:^4.1.0"
-    strip-final-newline: "npm:^4.0.0"
-    yoctocolors: "npm:^2.1.1"
-  checksum: 53443be93d847ff5b52d31ed3714f77aab764fb6c1d72dc7019214ab1cb1a69888e2158ba846426a8ea51443c110fe7a86de61ffb9ee5687b00120fbd739b8a4
+    "@sindresorhus/merge-streams": ^4.0.0
+    cross-spawn: ^7.0.6
+    figures: ^6.1.0
+    get-stream: ^9.0.0
+    human-signals: ^8.0.1
+    is-plain-obj: ^4.1.0
+    is-stream: ^4.0.1
+    npm-run-path: ^6.0.0
+    pretty-ms: ^9.2.0
+    signal-exit: ^4.1.0
+    strip-final-newline: ^4.0.0
+    yoctocolors: ^2.1.1
+  checksum: 8/22beaa34ffed9176e8b206f0fac69c87d69505ef40eee6dbfaca83bf29d773a5dfeebfc72bb7b2717bd75b85bb29266f24d718afca1dc5ac90167242e9802707
   languageName: node
   linkType: hard
 
@@ -5833,46 +5840,46 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "magicr@workspace:."
   dependencies:
-    "@types/eslint-plugin-security": ^3.0.0
-    "@types/jest": ^30.0.0
-    "@types/node": ^22.7.9
-    "@types/prop-types": ^15.7.15
-    "@types/react": ^18.3.12
-    "@typescript-eslint/eslint-plugin": ^8.13.0
-    "@typescript-eslint/parser": ^8.13.0
-    "@wgtechlabs/log-engine": ^2.2.0
-    chalk: ^5.3.0
-    conf: ^13.0.1
-    date-fns: ^4.1.0
-    eslint: ^9.15.0
-    eslint-config-prettier: ^9.1.0
-    eslint-import-resolver-typescript: ^4.4.4
-    eslint-plugin-import: ^2.31.0
-    eslint-plugin-node: ^11.1.0
-    eslint-plugin-prettier: ^5.2.1
-    eslint-plugin-react: ^7.37.2
-    eslint-plugin-react-hooks: ^5.0.0
-    eslint-plugin-security: ^3.0.1
-    eslint-plugin-security-node: ^1.1.4
-    execa: ^9.5.1
-    ink: ^5.0.1
-    ink-big-text: ^2.0.0
-    ink-gradient: ^3.0.0
-    ink-select-input: ^6.0.0
-    ink-spinner: ^5.0.0
-    is-git-repository: ^2.0.0
-    jest: ^30.0.3
-    meow: ^13.2.0
-    openai: ^4.67.3
-    prettier: ^3.3.3
-    react: ^18.3.1
-    rimraf: ^6.0.1
-    simple-git: ^3.30.0
-    snyk: ^1.1297.3
-    ts-jest: ^29.4.0
-    tsup: ^8.3.5
-    typescript: ^5.6.3
-    zod: ^3.25.76
+    "@types/eslint-plugin-security": "npm:^3.0.0"
+    "@types/jest": "npm:^30.0.0"
+    "@types/node": "npm:^22.7.9"
+    "@types/prop-types": "npm:^15.7.15"
+    "@types/react": "npm:^18.3.12"
+    "@typescript-eslint/eslint-plugin": "npm:^8.13.0"
+    "@typescript-eslint/parser": "npm:^8.13.0"
+    "@wgtechlabs/log-engine": "npm:^2.2.0"
+    chalk: "npm:^5.6.0"
+    conf: "npm:^13.0.1"
+    date-fns: "npm:^4.1.0"
+    eslint: "npm:^9.15.0"
+    eslint-config-prettier: "npm:^9.1.0"
+    eslint-import-resolver-typescript: "npm:^4.4.4"
+    eslint-plugin-import: "npm:^2.31.0"
+    eslint-plugin-node: "npm:^11.1.0"
+    eslint-plugin-prettier: "npm:^5.2.1"
+    eslint-plugin-react: "npm:^7.37.2"
+    eslint-plugin-react-hooks: "npm:^5.0.0"
+    eslint-plugin-security: "npm:^3.0.1"
+    eslint-plugin-security-node: "npm:^1.1.4"
+    execa: "npm:^9.5.1"
+    ink: "npm:^5.0.1"
+    ink-big-text: "npm:^2.0.0"
+    ink-gradient: "npm:^3.0.0"
+    ink-select-input: "npm:^6.0.0"
+    ink-spinner: "npm:^5.0.0"
+    is-git-repository: "npm:^2.0.0"
+    jest: "npm:^30.0.3"
+    meow: "npm:^13.2.0"
+    openai: "npm:^4.67.3"
+    prettier: "npm:^3.3.3"
+    react: "npm:^18.3.1"
+    rimraf: "npm:^6.0.1"
+    simple-git: "npm:^3.27.0"
+    snyk: "npm:^1.1297.3"
+    ts-jest: "npm:^29.4.0"
+    tsup: "npm:^8.3.5"
+    typescript: "npm:^5.6.3"
+    zod: "npm:^3.25.76"
   bin:
     magicr: ./dist/cli/index.js
   languageName: unknown
@@ -7288,10 +7295,10 @@ __metadata:
   version: 3.30.0
   resolution: "simple-git@npm:3.30.0"
   dependencies:
-    "@kwsites/file-exists": ^1.1.1
-    "@kwsites/promise-deferred": ^1.1.1
-    debug: ^4.4.0
-  checksum: 8/16969a0674052e2f9ef5ec3a491e566153fc2b8eddd434e8111a4533cceb074f9ffc24bf7d1098f932650fcd7b38ce7cba6d3d95fd3023a7346b153fc3760414
+    "@kwsites/file-exists": "npm:^1.1.1"
+    "@kwsites/promise-deferred": "npm:^1.1.1"
+    debug: "npm:^4.4.0"
+  checksum: 2582e6c1c50db8aa0b7d07ed0f0f86eb4ea647e6b33d1596cf44e509c7b658372da9db1dcbea626e7d71e30e8d826a84410bbc73c5d1066f2526724a31836f81
   languageName: node
   linkType: hard
 
