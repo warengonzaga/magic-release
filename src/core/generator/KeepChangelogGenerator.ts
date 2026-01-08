@@ -18,6 +18,7 @@ import path from 'path';
 import type { ChangelogEntry, Change, ChangeType, MagicReleaseConfig } from '../../types/index.js';
 import { ChangelogError } from '../../utils/errors.js';
 import { logger } from '../../utils/logger.js';
+
 import ChangelogParser from './ChangelogParser.js';
 
 export interface GeneratorOptions {
@@ -84,7 +85,7 @@ export class KeepChangelogGenerator {
     // Add unreleased section if needed
     const unreleasedEntry = finalEntries.find(entry => entry.version === 'Unreleased');
     if (unreleasedEntry && this.hasChanges(unreleasedEntry)) {
-      content += this.formatEntry(unreleasedEntry) + '\n';
+      content += `${this.formatEntry(unreleasedEntry)}\n`;
     }
 
     // Add released versions (sorted by version, newest first)

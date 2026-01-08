@@ -674,9 +674,8 @@ const GenerateConfigInterface: React.FC = () => {
       try {
         const { writeFileSync, existsSync } = await import('fs');
         const { join } = await import('path');
-        const { generateSampleConfig, CONFIG_FILENAMES } = await import(
-          '../utils/project-config.js'
-        );
+        const { generateSampleConfig, CONFIG_FILENAMES } =
+          await import('../utils/project-config.js');
 
         // Check if any config file already exists
         const cwd = process.cwd();

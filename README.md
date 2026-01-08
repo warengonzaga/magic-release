@@ -128,7 +128,7 @@ magicr --provider
 **Requirements:**
 
 - Node.js ≥ 20.0.0
-- Yarn ≥ 4.0.0 (recommended) or npm
+- PNPM ≥ 9.0.0 (recommended) or npm
 
 ### Global Installation
 
@@ -136,8 +136,8 @@ magicr --provider
 # Using npm
 npm install -g magicr
 
-# Using yarn
-yarn global add magicr
+# Using pnpm
+pnpm add -g magicr
 ```
 
 ### Using npx (No Installation Required)

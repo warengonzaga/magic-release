@@ -28,26 +28,26 @@ To get started with development:
 2. **Install dependencies**
 
    ```bash
-   yarn install
+   pnpm install
    ```
 
-   > ⚠️ **Important**: This project uses Yarn as the package manager. Ensure you have Yarn 4.0+ installed.
+   > ⚠️ **Important**: This project uses PNPM as the package manager. Ensure you have PNPM 9.0+ installed.
 
 3. **Set up your development environment**
 
    ```bash
    # Build the project
-   yarn build
+   pnpm build
    
    # Start development with watch mode
-   yarn dev
+   pnpm dev
    ```
 
 4. **Test the CLI locally**
 
    ```bash
    # Link the package globally for testing
-   yarn link
+   pnpm link -g
    
    # Test the CLI in a git repository
    cd /path/to/your/test-repo
@@ -58,30 +58,30 @@ To get started with development:
 
 ```bash
 # Development with auto-reload
-yarn dev
+pnpm dev
 
 # Build for production
-yarn build
+pnpm build
 
 # Type checking only
-yarn type-check
+pnpm type-check
 
 # Clean build artifacts
-yarn clean
+pnpm clean
 
 # Linting
-yarn lint              # Fix linting issues
-yarn lint:check        # Check linting without fixing
-yarn lint:security     # Security-focused linting
+pnpm lint              # Fix linting issues
+pnpm lint:check        # Check linting without fixing
+pnpm lint:security     # Security-focused linting
 
 # Testing
-yarn test              # Run test suite
-yarn test:watch        # Run tests in watch mode
-yarn test:coverage     # Run tests with coverage report
+pnpm test              # Run test suite
+pnpm test:watch        # Run tests in watch mode
+pnpm test:coverage     # Run tests with coverage report
 
 # Security scanning
-yarn secure:code       # Code security analysis
-yarn secure:deps       # Dependency vulnerability check
+pnpm secure:code       # Code security analysis
+pnpm secure:deps       # Dependency vulnerability check
 ```
 
 #### 🏛️ Project Structure
@@ -124,7 +124,7 @@ src/
 
 - **TypeScript First**: All code must be written in TypeScript with strict type checking
 - **Error Handling**: Implement comprehensive error handling with detailed error messages
-- **Package Manager**: Use Yarn exclusively (4.0+)
+- **Package Manager**: Use PNPM exclusively (9.0+)
 - **Code Style**: Follow existing patterns and maintain consistency
 - **Environment**: Use Node.js 20+ for development
 - **Testing**: Write tests for new features and bug fixes
@@ -146,11 +146,11 @@ When contributing to this project:
 #### 🔍 Code Review Process
 
 1. **Pre-submission checks**:
-   - [ ] Code builds without errors (`yarn build`)
-   - [ ] TypeScript type checking passes (`yarn type-check`)
-   - [ ] All tests pass (`yarn test`)
-   - [ ] Linting passes (`yarn lint:check`)
-   - [ ] Security checks pass (`yarn lint:security`)
+   - [ ] Code builds without errors (`pnpm build`)
+   - [ ] TypeScript type checking passes (`pnpm type-check`)
+   - [ ] All tests pass (`pnpm test`)
+   - [ ] Linting passes (`pnpm lint:check`)
+   - [ ] Security checks pass (`pnpm lint:security`)
    - [ ] CLI functionality works end-to-end
    - [ ] No sensitive data exposed in outputs
 
@@ -270,8 +270,8 @@ Example `.magicrrc` file:
 # Install globally via npm
 npm install -g magicr
 
-# Install globally via yarn
-yarn global add magicr
+# Install globally via pnpm
+pnpm add -g magicr
 
 # Verify installation
 magicr --version
@@ -285,13 +285,13 @@ git clone https://github.com/warengonzaga/magic-release.git
 cd magic-release
 
 # Install dependencies
-yarn install
+pnpm install
 
 # Build project
-yarn build
+pnpm build
 
 # Link for global usage
-yarn link
+pnpm link -g
 ```
 
 #### **⚙️ Usage Examples**
