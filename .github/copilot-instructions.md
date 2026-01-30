@@ -63,7 +63,7 @@ or with optional scope:
 ```
 🔒 security: sanitize user input in commit parser
 🔒 security (api): validate llm api responses
-🔒 security: update dependencies with known cves
+🔒 security: update dependencies with known CVEs
 ```
 
 ### Project Setup
@@ -76,7 +76,7 @@ or with optional scope:
 ### Maintenance
 ```
 ☕ chore: update npm dependencies
-☕ chore (deps): bump openai to version 4.67
+☕ chore (deps): bump openai to latest version
 ☕ chore: clean up unused imports
 ```
 
@@ -96,9 +96,9 @@ or with optional scope:
 
 ### Releases
 ```
-🚀 release: version 0.1.1-beta
-🚀 release: prepare for 1.0.0 release
-🚀 release: hotfix version 0.1.2-beta
+🚀 release: version 1.0.0
+🚀 release: prepare for 2.0.0 release
+🚀 release: hotfix version 1.0.1
 ```
 
 ## Reference

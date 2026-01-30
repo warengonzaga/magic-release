@@ -88,6 +88,14 @@ This project follows the **Clean Commit** workflow. See `.github/copilot-instruc
 - 📖 `docs`: Documentation
 - 🚀 `release`: Version releases
 
+**Examples:**
+```
+📦 new: user authentication system
+🔧 update (api): improve error handling
+🔒 security: patch XSS vulnerability
+🚀 release: version 1.0.0
+```
+
 ## Testing Guidelines
 
 - Write unit tests for new functionality
